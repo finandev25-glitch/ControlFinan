@@ -7,6 +7,7 @@ import ReportsPage from './pages/ReportsPage';
 import CajasPage from './pages/CajasPage';
 import AdvancedReportsPage from './pages/AdvancedReportsPage';
 import BudgetsPage from './pages/BudgetsPage';
+import ArqueoPage from './pages/ArqueoPage';
 import { transactions as initialTransactions, cajas as initialCajas, members, budgets as initialBudgets } from './data/mockData';
 import { Wallet, Landmark, CreditCard, University } from 'lucide-react';
 
@@ -73,6 +74,10 @@ function App() {
           <Route 
             path="/cajas" 
             element={<CajasPage transactions={transactions} cajas={cajas} onAddCaja={handleAddCaja} members={members} />} 
+          />
+          <Route 
+            path="/arqueo" 
+            element={<ArqueoPage transactions={transactions} cajas={cajas} onAddTransactions={handleAddTransactions} members={members} />} 
           />
           <Route 
             path="/reportes" 

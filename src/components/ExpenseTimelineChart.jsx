@@ -1,69 +1,94 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
 import resolveConfig from 'tailwindcss/resolveConfig';
 import tailwindConfig from '../../tailwind.config.js';
 
 const fullConfig = resolveConfig(tailwindConfig);
 
-const ExpenseTimelineChart = ({ data, onEvents }) => {
-  const option = {
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: {
-        type: 'shadow'
+const ExpenseTimelineChart = ({ data, onEvents, interval }) => {
+  const option = useMemo(() => {
+    const config = {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: {
+          type: 'shadow'
+        },
+        formatter: '{b}: S/ {c}'
       },
-      formatter: '{b}: S/ {c}'
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
-      containLabel: true
-    },
-    xAxis: [
-      {
-        type: 'category',
-        data: data.labels,
-        axisTick: {
-          alignWithLabel: true
-        },
-        axisLine: {
-          lineStyle: {
-            color: fullConfig.theme.colors.slate[300]
-          }
-        },
-        axisLabel: {
-          color: fullConfig.theme.colors.slate[500]
-        }
-      }
-    ],
-    yAxis: [
-      {
-        type: 'value',
-        axisLabel: {
-          formatter: 'S/ {value}',
-          color: fullConfig.theme.colors.slate[500]
-        },
-        splitLine: {
-          lineStyle: {
-            color: fullConfig.theme.colors.slate[200]
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '15%', // Increase bottom margin for dataZoom
+        containLabel: true
+      },
+      xAxis: [
+        {
+          type: 'category',
+          data: data.labels,
+          axisTick: {
+            alignWithLabel: true
+          },
+          axisLine: {
+            lineStyle: {
+              color: fullConfig.theme.colors.slate[300]
+            }
+          },
+          axisLabel: {
+            color: fullConfig.theme.colors.slate[500]
           }
         }
-      }
-    ],
-    series: [
-      {
-        name: 'Gastos',
-        type: 'bar',
-        barWidth: '60%',
-        itemStyle: {
-          color: fullConfig.theme.colors.primary[500],
-          borderRadius: [4, 4, 0, 0]
+      ],
+      yAxis: [
+        {
+          type: 'value',
+          axisLabel: {
+            formatter: 'S/ {value}',
+            color: fullConfig.theme.colors.slate[500]
+          },
+          splitLine: {
+            lineStyle: {
+              color: fullConfig.theme.colors.slate[200]
+            }
+          }
+        }
+      ],
+      series: [
+        {
+          name: 'Gastos',
+          type: 'bar',
+          barWidth: '60%',
+          itemStyle: {
+            color: fullConfig.theme.colors.primary[500],
+            borderRadius: [4, 4, 0, 0]
+          },
+          data: data.amounts
+        }
+      ]
+    };
+
+    if (interval === 'Diario') {
+      config.dataZoom = [
+        {
+          type: 'inside',
+          xAxisIndex: 0,
+          start: 90,
+          end: 100,
+          filterMode: 'filter'
         },
-        data: data.amounts
-      }
-    ]
-  };
+        {
+          type: 'slider',
+          xAxisIndex: 0,
+          start: 90,
+          end: 100,
+          height: 25,
+          bottom: 5,
+          filterMode: 'filter'
+        }
+      ];
+    }
+
+    return config;
+  }, [data, interval]);
 
   if (!data || data.amounts.length === 0) {
     return <div className="flex items-center justify-center h-[350px] text-slate-500">Selecciona una categoría para ver su línea de tiempo.</div>;

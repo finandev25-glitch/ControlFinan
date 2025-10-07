@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek, format, startOfDay, endOfDay, subDays, subWeeks, startOfYear } from 'date-fns';
+import { startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek, format, startOfDay, endOfDay, subWeeks, startOfYear, eachDayOfInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { members, expenseCategories } from '../data/mockData';
 import MonthlyComparisonCard from '../components/MonthlyComparisonCard';
@@ -84,32 +84,39 @@ const AdvancedReportsPage = ({ transactions, members, selectedYear, selectedMont
     let result = { labels: [], amounts: [], dateRanges: [] };
 
     if (timelineInterval === 'Diario') {
-      const thirtyDaysAgo = startOfDay(subDays(now, 29));
-      const dailyTransactions = baseTransactions.filter(t => new Date(t.date) >= thirtyDaysAgo);
-      data = dailyTransactions.reduce((acc, t) => {
+      const startOfCurrentYear = startOfYear(now);
+      const endOfToday = endOfDay(now);
+      
+      const yearlyTransactions = baseTransactions.filter(t => {
+          const txDate = new Date(t.date);
+          return txDate >= startOfCurrentYear && txDate <= endOfToday;
+      });
+
+      data = yearlyTransactions.reduce((acc, t) => {
         const date = startOfDay(new Date(t.date)).toISOString();
         acc[date] = (acc[date] || 0) + t.amount;
         return acc;
       }, {});
       const dateMap = new Map(Object.entries(data));
-      const allDates = Array.from({ length: 30 }).map((_, i) => startOfDay(subDays(now, i)).toISOString()).reverse();
       
-      result.labels = allDates.map(d => format(new Date(d), 'dd MMM', { locale: es }));
-      result.amounts = allDates.map(d => dateMap.get(d) || 0);
-      result.dateRanges = allDates.map(d => ({ start: new Date(d), end: endOfDay(new Date(d)) }));
+      const allDates = eachDayOfInterval({ start: startOfCurrentYear, end: endOfToday });
+      
+      result.labels = allDates.map(d => format(d, 'dd MMM', { locale: es }));
+      result.amounts = allDates.map(d => dateMap.get(startOfDay(d).toISOString()) || 0);
+      result.dateRanges = allDates.map(d => ({ start: startOfDay(d), end: endOfDay(d) }));
       return result;
     }
 
     if (timelineInterval === 'Semanal') {
-      const threeWeeksAgo = startOfWeek(subWeeks(now, 2), { weekStartsOn: 1 });
-      const weeklyTransactions = baseTransactions.filter(t => new Date(t.date) >= threeWeeksAgo);
+      const sixWeeksAgo = startOfWeek(subWeeks(now, 5), { weekStartsOn: 1 });
+      const weeklyTransactions = baseTransactions.filter(t => new Date(t.date) >= sixWeeksAgo);
       data = weeklyTransactions.reduce((acc, t) => {
         const weekStart = startOfWeek(new Date(t.date), { weekStartsOn: 1 }).toISOString();
         acc[weekStart] = (acc[weekStart] || 0) + t.amount;
         return acc;
       }, {});
       const dateMap = new Map(Object.entries(data));
-      const allWeeks = Array.from({ length: 3 }).map((_, i) => startOfWeek(subWeeks(now, i), { weekStartsOn: 1 }).toISOString()).reverse();
+      const allWeeks = Array.from({ length: 6 }).map((_, i) => startOfWeek(subWeeks(now, i), { weekStartsOn: 1 }).toISOString()).reverse();
 
       result.labels = allWeeks.map(w => format(endOfWeek(new Date(w), { weekStartsOn: 1 }), 'dd MMM', { locale: es }));
       result.amounts = allWeeks.map(w => dateMap.get(w) || 0);
@@ -286,7 +293,7 @@ const AdvancedReportsPage = ({ transactions, members, selectedYear, selectedMont
                   </div>
               </div>
             </div>
-            <ExpenseTimelineChart data={timelineChartData} onEvents={onChartEvents} />
+            <ExpenseTimelineChart data={timelineChartData} onEvents={onChartEvents} interval={timelineInterval} />
           </div>
         </div>
         
