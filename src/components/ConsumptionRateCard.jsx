@@ -20,7 +20,7 @@ const ConsumptionRateCard = ({ rate }) => {
         splitNumber: 5,
         axisLine: {
           lineStyle: {
-            width: 12,
+            width: 15,
             color: [
               [0.5, fullConfig.theme.colors.green[500]],
               [0.85, fullConfig.theme.colors.amber[500]],
@@ -53,9 +53,9 @@ const ConsumptionRateCard = ({ rate }) => {
           valueAnimation: true,
           formatter: '{value}%',
           color: 'auto',
-          fontSize: isMobile ? 22 : 28,
+          fontSize: isMobile ? 24 : 30,
           fontWeight: 'bold',
-          offsetCenter: [0, '-10%'],
+          offsetCenter: [0, '5%'],
         },
         data: [
           {
@@ -69,10 +69,7 @@ const ConsumptionRateCard = ({ rate }) => {
   return (
     <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm hover:shadow-lg hover:border-primary-300 transition-all duration-300 flex flex-col justify-between">
        <h3 className="text-sm font-medium text-slate-500 text-center">Tasa de Consumo</h3>
-      <ReactECharts option={option} style={{ height: '120px' }} notMerge={true} />
-      <p className="text-xs text-center text-slate-500 mt-2">
-        Porcentaje de tu presupuesto mensual que has gastado.
-      </p>
+      <ReactECharts option={option} style={{ height: '150px' }} notMerge={true} />
     </div>
   );
 };

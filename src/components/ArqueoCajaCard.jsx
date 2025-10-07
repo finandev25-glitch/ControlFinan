@@ -1,9 +1,10 @@
 import React from 'react';
+import { Calculator } from 'lucide-react';
 
 const formatCurrency = (amount) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(amount);
 
-const ArqueoCajaCard = ({ caja, realBalance, onRealBalanceChange, onAdjust }) => {
-  const { id, name, icon: Icon, calculatedBalance } = caja;
+const ArqueoCajaCard = ({ caja, realBalance, onRealBalanceChange, onAdjust, onOpenCounter }) => {
+  const { id, name, icon: Icon, calculatedBalance, type } = caja;
   const real = parseFloat(realBalance) || 0;
   const difference = real - calculatedBalance;
 
@@ -29,7 +30,15 @@ const ArqueoCajaCard = ({ caja, realBalance, onRealBalanceChange, onAdjust }) =>
         </div>
 
         <div>
-          <label htmlFor={`real-balance-${id}`} className="block text-sm font-medium text-slate-500 mb-1">Saldo Real (S/)</label>
+          <div className="flex justify-between items-center mb-1">
+            <label htmlFor={`real-balance-${id}`} className="block text-sm font-medium text-slate-500">Saldo Real (S/)</label>
+            {type === 'Efectivo' && (
+              <button onClick={() => onOpenCounter(id)} className="flex items-center gap-1 text-xs font-semibold text-primary-600 hover:text-primary-800">
+                <Calculator size={14} />
+                Contar Dinero
+              </button>
+            )}
+          </div>
           <input
             type="number"
             id={`real-balance-${id}`}

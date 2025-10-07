@@ -154,20 +154,20 @@ const DashboardPage = ({ transactions, members, budgets, selectedYear, selectedM
         <ConsumptionRateCard rate={consumptionRate} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-        <div className="lg:col-span-3 bg-white p-6 rounded-xl border border-slate-200/80 shadow-sm">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-sm">
           <h2 className="text-lg font-semibold mb-4">Flujo de Caja</h2>
           <CashFlowChart data={cashFlowData} />
         </div>
-        <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200/80 shadow-sm">
+        <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-sm">
           <h2 className="text-lg font-semibold mb-4">Distribución de Gastos</h2>
           <ExpenseChart data={expenseChartData} />
         </div>
-        <div className="lg:col-span-3 bg-white p-6 rounded-xl border border-slate-200/80 shadow-sm">
+        <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-sm">
             <h2 className="text-lg font-semibold mb-4">Resumen de Presupuestos</h2>
             <BudgetOverview data={budgetOverviewData} />
         </div>
-         <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200/80 shadow-sm">
+         <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-sm">
             <h2 className="text-lg font-semibold mb-4">Transacciones Recientes</h2>
             <RecentTransactionsList transactions={recentTransactionsData} />
         </div>

@@ -1,8 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import ArqueoCajaCard from '../components/ArqueoCajaCard';
+import CashCounterModal from '../components/CashCounterModal';
 
 const ArqueoPage = ({ transactions, cajas, onAddTransactions, members }) => {
   const [realBalances, setRealBalances] = useState({});
+  const [isCounterOpen, setIsCounterOpen] = useState(false);
+  const [activeCajaId, setActiveCajaId] = useState(null);
 
   const cajasConBalance = useMemo(() => {
     return cajas.map(caja => {
@@ -14,7 +17,6 @@ const ArqueoPage = ({ transactions, cajas, onAddTransactions, members }) => {
         .reduce((sum, t) => sum + t.amount, 0);
       
       let balance = income - expense;
-      // For credit cards, balance is inverted (it's a debt)
       if (caja.type === 'Tarjeta de Crédito') {
         balance = expense - income;
       }
@@ -63,32 +65,56 @@ const ArqueoPage = ({ transactions, cajas, onAddTransactions, members }) => {
 
     onAddTransactions([adjustmentTransaction]);
     
-    // Clear the input after adjustment
     setRealBalances(prev => ({
       ...prev,
       [cajaId]: '',
     }));
   };
 
-  return (
-    <div className="p-4 sm:p-6 lg:p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-800">Arqueo de Cajas</h1>
-        <p className="mt-1 text-slate-500">Compara el saldo real de tus cajas con el saldo calculado y ajústalo si es necesario.</p>
-      </div>
+  const handleOpenCounter = (cajaId) => {
+    setActiveCajaId(cajaId);
+    setIsCounterOpen(true);
+  };
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {cajasConBalance.map(caja => (
-          <ArqueoCajaCard 
-            key={caja.id}
-            caja={caja}
-            realBalance={realBalances[caja.id] || ''}
-            onRealBalanceChange={handleRealBalanceChange}
-            onAdjust={handleAdjust}
-          />
-        ))}
+  const handleCloseCounter = () => {
+    setIsCounterOpen(false);
+    setActiveCajaId(null);
+  };
+
+  const handleConfirmCount = (total) => {
+    if (activeCajaId !== null) {
+      handleRealBalanceChange(activeCajaId, total.toString());
+    }
+    handleCloseCounter();
+  };
+
+  return (
+    <>
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-slate-800">Arqueo de Cajas</h1>
+          <p className="mt-1 text-slate-500">Compara el saldo real de tus cajas con el saldo calculado y ajústalo si es necesario.</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {cajasConBalance.map(caja => (
+            <ArqueoCajaCard 
+              key={caja.id}
+              caja={caja}
+              realBalance={realBalances[caja.id] || ''}
+              onRealBalanceChange={handleRealBalanceChange}
+              onAdjust={handleAdjust}
+              onOpenCounter={handleOpenCounter}
+            />
+          ))}
+        </div>
       </div>
-    </div>
+      <CashCounterModal 
+        isOpen={isCounterOpen}
+        onClose={handleCloseCounter}
+        onConfirm={handleConfirmCount}
+      />
+    </>
   );
 };
 

@@ -107,11 +107,11 @@ export const transactions = Array.from({ length: 150 }, (_, i) => {
   let description;
 
   if (type === 'Ingreso') {
-    amount = faker.number.int({ min: 1000, max: 7000 });
+    amount = faker.number.int({ min: 100, max: 1500 });
     category = faker.helpers.arrayElement(incomeCategories).name;
     description = 'Ingreso de ' + category.toLowerCase();
   } else { // Gasto
-    amount = faker.number.int({ min: 50, max: 1500 });
+    amount = faker.number.int({ min: 10, max: 200 });
     category = faker.helpers.arrayElement(expenseCategories).name;
     description = faker.commerce.productName();
   }
