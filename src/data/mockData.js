@@ -85,6 +85,12 @@ export const cajas = [
     },
 ];
 
+export const budgets = [
+  { category: 'Alimentación', limit: 1500 },
+  { category: 'Transporte', limit: 400 },
+  { category: 'Ocio', limit: 600 },
+];
+
 // Generar transacciones
 const transactionTypes = ['Ingreso', 'Gasto'];
 export const transactions = Array.from({ length: 150 }, (_, i) => {

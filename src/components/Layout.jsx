@@ -2,11 +2,11 @@ import React from 'react';
 import { Outlet } from 'react-router-dom';
 import Header from './Header';
 
-const Layout = ({ children }) => {
+const Layout = () => {
   return (
-    <div className="min-h-screen bg-gray-50 text-slate-800">
+    <div className="flex flex-col min-h-screen bg-gray-50 text-slate-800">
       <Header />
-      <main>
+      <main className="flex-grow">
         <Outlet />
       </main>
     </div>

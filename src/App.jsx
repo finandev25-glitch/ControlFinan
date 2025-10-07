@@ -6,7 +6,8 @@ import MembersPage from './pages/MembersPage';
 import ReportsPage from './pages/ReportsPage';
 import CajasPage from './pages/CajasPage';
 import AdvancedReportsPage from './pages/AdvancedReportsPage';
-import { transactions as initialTransactions, cajas as initialCajas, members } from './data/mockData';
+import BudgetsPage from './pages/BudgetsPage';
+import { transactions as initialTransactions, cajas as initialCajas, members, budgets as initialBudgets } from './data/mockData';
 import { Wallet, Landmark, CreditCard, University } from 'lucide-react';
 
 const iconMap = {
@@ -24,6 +25,7 @@ const initialCajasWithIcons = initialCajas.map(caja => ({
 function App() {
   const [transactions, setTransactions] = useState(initialTransactions);
   const [cajas, setCajas] = useState(initialCajasWithIcons);
+  const [budgets, setBudgets] = useState(initialBudgets);
 
   const handleAddTransactions = (newTransactions) => {
     const transactionsToAdd = Array.isArray(newTransactions) ? newTransactions : [newTransactions];
@@ -35,13 +37,25 @@ function App() {
     setCajas(prev => [...prev, { ...newCaja, id: Date.now(), icon }]);
   };
 
+  const handleSaveBudget = (newBudget) => {
+    setBudgets(prev => {
+      const existingIndex = prev.findIndex(b => b.category === newBudget.category);
+      if (existingIndex > -1) {
+        const updatedBudgets = [...prev];
+        updatedBudgets[existingIndex] = newBudget;
+        return updatedBudgets;
+      }
+      return [...prev, newBudget];
+    });
+  };
+
   return (
     <Router>
       <Routes>
         <Route element={<Layout />}>
           <Route 
             path="/" 
-            element={<DashboardPage transactions={transactions} members={members} />} 
+            element={<DashboardPage transactions={transactions} members={members} budgets={budgets} />} 
           />
           <Route 
             path="/miembros" 
@@ -58,6 +72,10 @@ function App() {
            <Route 
             path="/analisis" 
             element={<AdvancedReportsPage transactions={transactions} members={members} />} 
+          />
+          <Route 
+            path="/presupuesto" 
+            element={<BudgetsPage budgets={budgets} transactions={transactions} onSaveBudget={handleSaveBudget} />} 
           />
         </Route>
       </Routes>
