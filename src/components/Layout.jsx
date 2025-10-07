@@ -3,7 +3,7 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import { Menu } from 'lucide-react';
 
-const Layout = ({ children, pendingExpenses, onConfirmScheduledExpense, members, cajas }) => {
+const Layout = ({ children, pendingExpenses, onReviewExpense, members, cajas }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -14,7 +14,7 @@ const Layout = ({ children, pendingExpenses, onConfirmScheduledExpense, members,
         <Header 
           setSidebarOpen={setSidebarOpen} 
           pendingExpenses={pendingExpenses}
-          onConfirmScheduledExpense={onConfirmScheduledExpense}
+          onReviewExpense={onReviewExpense}
           members={members}
           cajas={cajas}
         />

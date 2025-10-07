@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, CheckCircle, Tag, Calendar, User, Wallet } from 'lucide-react';
+import { Bell, Tag, Calendar, User, Wallet } from 'lucide-react';
 import { expenseCategories } from '../data/mockData';
 
 const formatCurrency = (amount) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(amount);
@@ -11,7 +11,7 @@ const InfoLine = ({ icon: Icon, value }) => (
   </div>
 );
 
-const Notifications = ({ pendingExpenses, onConfirm, members, cajas }) => {
+const Notifications = ({ pendingExpenses, onReviewExpense, members, cajas }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -33,7 +33,9 @@ const Notifications = ({ pendingExpenses, onConfirm, members, cajas }) => {
       >
         <Bell className="h-6 w-6" />
         {pendingExpenses.length > 0 && (
-          <span className="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white"></span>
+          <span className="absolute top-1 right-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold text-white ring-2 ring-white">
+            {pendingExpenses.length}
+          </span>
         )}
       </button>
 
@@ -53,27 +55,17 @@ const Notifications = ({ pendingExpenses, onConfirm, members, cajas }) => {
                   const CategoryIcon = category?.icon || Tag;
 
                   return (
-                    <li key={expense.id} className="p-4 hover:bg-slate-50 border-b border-slate-100 last:border-b-0">
+                    <li key={expense.id} className="p-4 hover:bg-slate-50 border-b border-slate-100 last:border-b-0 cursor-pointer" onClick={() => { onReviewExpense(expense); setIsOpen(false); }}>
                       <div className="flex items-start justify-between mb-2">
                         <h4 className="font-bold text-sm text-slate-800">{expense.description}</h4>
                         <CategoryIcon size={16} className="text-slate-400" />
                       </div>
                       <p className="text-lg font-bold text-red-500 mb-3">{formatCurrency(expense.amount)}</p>
-                      <div className="grid grid-cols-2 gap-1.5 mb-3">
+                      <div className="grid grid-cols-2 gap-1.5">
                         <InfoLine icon={Calendar} value={`Vence el día ${expense.dayOfMonth}`} />
                         {member && <InfoLine icon={User} value={member.name} />}
                         {caja && <InfoLine icon={Wallet} value={caja.name} />}
                       </div>
-                      <button
-                        onClick={() => {
-                          onConfirm(expense.id);
-                          if(pendingExpenses.length === 1) setIsOpen(false);
-                        }}
-                        className="w-full flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-semibold text-white bg-green-600 rounded-md shadow-sm hover:bg-green-700"
-                      >
-                        <CheckCircle size={14} />
-                        Confirmar Gasto
-                      </button>
                     </li>
                   );
                 })}

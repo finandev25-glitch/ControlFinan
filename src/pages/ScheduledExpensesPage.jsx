@@ -1,7 +1,14 @@
 import React, { useState } from 'react';
-import { PlusCircle } from 'lucide-react';
-import ScheduledExpenseCard from '../components/ScheduledExpenseCard';
+import { PlusCircle, Tag, Wallet } from 'lucide-react';
 import AddScheduledExpenseModal from '../components/AddScheduledExpenseModal';
+import { expenseCategories } from '../data/mockData';
+
+const formatCurrency = (amount) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(amount);
+
+const categoryIconMap = expenseCategories.reduce((acc, cat) => {
+  acc[cat.name] = cat.icon;
+  return acc;
+}, {});
 
 const ScheduledExpensesPage = ({ scheduledExpenses, onAddScheduledExpense, members, cajas }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -20,17 +27,59 @@ const ScheduledExpensesPage = ({ scheduledExpenses, onAddScheduledExpense, membe
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {scheduledExpenses.map(expense => (
-            <ScheduledExpenseCard
-              key={expense.id}
-              expense={expense}
-              member={members.find(m => m.id === expense.memberId)}
-              caja={cajas.find(c => c.id === expense.cajaId)}
-            />
-          ))}
+        <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Descripción</th>
+                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Monto</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Categoría</th>
+                  <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">Día de Pago</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Responsable</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Caja</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-slate-200">
+                {scheduledExpenses.map(expense => {
+                  const member = members.find(m => m.id === expense.memberId);
+                  const caja = cajas.find(c => c.id === expense.cajaId);
+                  const CategoryIcon = categoryIconMap[expense.category] || Tag;
+                  return (
+                    <tr key={expense.id} className="hover:bg-slate-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-800">{expense.description}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-red-600">{formatCurrency(expense.amount)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                        <div className="flex items-center gap-2">
+                          <CategoryIcon size={16} />
+                          <span>{expense.category}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-slate-500">{expense.dayOfMonth}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                        {member ? (
+                          <div className="flex items-center gap-2">
+                            <img src={member.avatar} alt={member.name} className="h-6 w-6 rounded-full" />
+                            <span>{member.name}</span>
+                          </div>
+                        ) : 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                        {caja ? (
+                          <div className="flex items-center gap-2">
+                            <Wallet size={16} />
+                            <span>{caja.name}</span>
+                          </div>
+                        ) : 'N/A'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
           {scheduledExpenses.length === 0 && (
-            <div className="md:col-span-2 xl:col-span-3 text-center py-16 rounded-lg bg-slate-50 border-2 border-dashed border-slate-200">
+            <div className="text-center py-16">
               <h3 className="text-lg font-medium text-slate-900">No hay gastos programados</h3>
               <p className="mt-1 text-sm text-slate-500">Añade tus gastos recurrentes para empezar a monitorearlos.</p>
             </div>

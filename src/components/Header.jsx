@@ -2,7 +2,7 @@ import React from 'react';
 import { UserCircle, Menu } from 'lucide-react';
 import Notifications from './Notifications';
 
-const Header = ({ setSidebarOpen, pendingExpenses, onConfirmScheduledExpense, members, cajas }) => {
+const Header = ({ setSidebarOpen, pendingExpenses, onReviewExpense, members, cajas }) => {
   return (
     <header className="sticky top-0 bg-white/90 backdrop-blur-lg border-b border-slate-200 z-30">
       <div className="px-4 sm:px-6 lg:px-8">
@@ -24,7 +24,7 @@ const Header = ({ setSidebarOpen, pendingExpenses, onConfirmScheduledExpense, me
           <div className="flex items-center gap-3">
             <Notifications 
               pendingExpenses={pendingExpenses}
-              onConfirm={onConfirmScheduledExpense}
+              onReviewExpense={onReviewExpense}
               members={members}
               cajas={cajas}
             />

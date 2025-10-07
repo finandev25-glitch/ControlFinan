@@ -9,9 +9,10 @@ import AdvancedReportsPage from './pages/AdvancedReportsPage';
 import BudgetsPage from './pages/BudgetsPage';
 import ArqueoPage from './pages/ArqueoPage';
 import ScheduledExpensesPage from './pages/ScheduledExpensesPage';
+import ConfirmExpenseModal from './components/ConfirmExpenseModal';
 import { transactions as initialTransactions, cajas as initialCajas, members, budgets as initialBudgets, scheduledExpenses as initialScheduledExpenses } from './data/mockData';
 import { Wallet, Landmark, CreditCard, University } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, isWithinInterval, addDays, startOfDay } from 'date-fns';
 
 const iconMap = {
   'Efectivo': Wallet,
@@ -32,6 +33,7 @@ function App() {
   const [scheduledExpenses, setScheduledExpenses] = useState(initialScheduledExpenses);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [expenseToConfirm, setExpenseToConfirm] = useState(null);
 
   const handleAddTransactions = (newTransactions) => {
     const transactionsToAdd = Array.isArray(newTransactions) ? newTransactions : [newTransactions];
@@ -59,26 +61,26 @@ function App() {
     setScheduledExpenses(prev => [...prev, { ...newExpense, id: Date.now(), confirmedMonths: [] }]);
   };
   
-  const handleConfirmScheduledExpense = (scheduledExpenseId) => {
-    const expenseToConfirm = scheduledExpenses.find(e => e.id === scheduledExpenseId);
-    if (!expenseToConfirm) return;
+  const handleOpenConfirmModal = (expense) => {
+    setExpenseToConfirm(expense);
+  };
 
-    const member = members.find(m => m.id === expenseToConfirm.memberId);
-    
+  const handleCloseConfirmModal = () => {
+    setExpenseToConfirm(null);
+  };
+
+  const handleConfirmExpense = (updatedTransactionData, scheduledExpenseId) => {
     const newTransaction = {
+      ...updatedTransactionData,
       id: Date.now(),
-      date: new Date(selectedYear, selectedMonth, expenseToConfirm.dayOfMonth),
-      description: expenseToConfirm.description,
-      memberId: expenseToConfirm.memberId,
-      memberName: member?.name || 'N/A',
-      cajaId: expenseToConfirm.cajaId,
+      memberName: members.find(m => m.id === updatedTransactionData.memberId)?.name || 'N/A',
       type: 'Gasto',
-      category: expenseToConfirm.category,
-      amount: expenseToConfirm.amount,
     };
     handleAddTransactions([newTransaction]);
 
-    const periodKey = format(new Date(selectedYear, selectedMonth), 'yyyy-MM');
+    const today = new Date();
+    const periodKey = format(new Date(today.getFullYear(), today.getMonth()), 'yyyy-MM');
+
     setScheduledExpenses(prev => prev.map(exp => {
       if (exp.id === scheduledExpenseId) {
         return {
@@ -88,6 +90,7 @@ function App() {
       }
       return exp;
     }));
+    handleCloseConfirmModal();
   };
 
   const periodProps = {
@@ -98,19 +101,33 @@ function App() {
   };
 
   const pendingExpenses = useMemo(() => {
-    const selectedDate = new Date(selectedYear, selectedMonth);
-    const periodKey = format(selectedDate, 'yyyy-MM');
+    const today = startOfDay(new Date());
+    const fourDaysFromNow = addDays(today, 4);
+    
     return scheduledExpenses.filter(exp => {
-      const isConfirmed = exp.confirmedMonths?.includes(periodKey);
-      return !isConfirmed;
+      const currentMonthPeriodKey = format(new Date(today.getFullYear(), today.getMonth()), 'yyyy-MM');
+      
+      const isConfirmedForCurrentMonth = exp.confirmedMonths?.includes(currentMonthPeriodKey);
+      if (isConfirmedForCurrentMonth) {
+        return false;
+      }
+      
+      const dueDateThisMonth = new Date(today.getFullYear(), today.getMonth(), exp.dayOfMonth);
+
+      const isDueSoon = isWithinInterval(dueDateThisMonth, {
+        start: today,
+        end: fourDaysFromNow
+      });
+      
+      return isDueSoon;
     });
-  }, [scheduledExpenses, selectedYear, selectedMonth]);
+  }, [scheduledExpenses]);
 
   return (
     <Router>
       <Layout 
         pendingExpenses={pendingExpenses}
-        onConfirmScheduledExpense={handleConfirmScheduledExpense}
+        onReviewExpense={handleOpenConfirmModal}
         members={members}
         cajas={cajas}
       >
@@ -164,6 +181,14 @@ function App() {
           />
         </Routes>
       </Layout>
+      <ConfirmExpenseModal
+        isOpen={!!expenseToConfirm}
+        onClose={handleCloseConfirmModal}
+        onConfirm={handleConfirmExpense}
+        expense={expenseToConfirm}
+        members={members}
+        cajas={cajas}
+      />
     </Router>
   );
 }
