@@ -1,12 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { members } from '../data/mockData';
 import AddTransactionForm from '../components/AddTransactionForm';
 import TransactionCard from '../components/TransactionCard';
 import { Filter, PlusCircle } from 'lucide-react';
 
 const formatCurrency = (amount) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(amount);
 
-const MembersPage = ({ transactions, onAddTransactions, cajas }) => {
+const MembersPage = ({ transactions, onAddTransactions, cajas, members }) => {
   const [selectedMemberId, setSelectedMemberId] = useState(members[0]?.id);
   const [isFormVisible, setIsFormVisible] = useState(false);
 
@@ -16,7 +15,7 @@ const MembersPage = ({ transactions, onAddTransactions, cajas }) => {
       const expenses = transactions.filter(t => t.memberId === member.id && t.type === 'Gasto').reduce((s, t) => s + t.amount, 0);
       return { ...member, balance: income - expenses };
     });
-  }, [transactions]);
+  }, [transactions, members]);
 
   const selectedMemberTransactions = useMemo(() => {
     if (!selectedMemberId) return [];
@@ -26,7 +25,7 @@ const MembersPage = ({ transactions, onAddTransactions, cajas }) => {
         const member = members.find(m => m.id === t.memberId);
         return { ...t, memberAvatar: member?.avatar };
       });
-  }, [transactions, selectedMemberId]);
+  }, [transactions, selectedMemberId, members]);
   
   const handleSaveTransaction = (data) => {
     const transactionDate = data.date;

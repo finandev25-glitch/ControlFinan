@@ -1,37 +1,30 @@
 import React, { useMemo, useState } from 'react';
-import SummaryCard from '../components/SummaryCard';
 import ExpenseChart from '../components/ExpenseChart';
 import CashFlowChart from '../components/CashFlowChart';
 import PeriodSelector from '../components/PeriodSelector';
 import BudgetOverview from '../components/BudgetOverview';
 import RecentTransactionsList from '../components/RecentTransactionsList';
-import ConsumptionRateCard from '../components/ConsumptionRateCard';
-import { ArrowUpCircle, ArrowDownCircle, Scale, Users } from 'lucide-react';
-import { startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import BalanceSummaryCard from '../components/BalanceSummaryCard';
+import CajaBalancesCard from '../components/CajaBalancesCard';
+import { Users } from 'lucide-react';
+import { startOfMonth, endOfMonth, subDays } from 'date-fns';
 import { members as allMembers, expenseCategories } from '../data/mockData';
 
-const DashboardPage = ({ transactions, members, budgets, selectedYear, selectedMonth, onYearChange, onMonthChange }) => {
+const DashboardPage = ({ transactions, members, budgets, cajas, selectedYear, selectedMonth, onYearChange, onMonthChange }) => {
   const [selectedMemberId, setSelectedMemberId] = useState('all');
 
   const {
     summary,
-    previousSummary,
     cashFlowData,
     expenseChartData,
     budgetOverviewData,
     recentTransactionsData,
-    consumptionRate,
+    cajaBalances,
   } = useMemo(() => {
     const selectedDate = new Date(selectedYear, selectedMonth);
     const dateRange = {
       from: startOfMonth(selectedDate),
       to: endOfMonth(selectedDate),
-    };
-
-    const previousMonthDate = subMonths(selectedDate, 1);
-    const previousDateRange = {
-      from: startOfMonth(previousMonthDate),
-      to: endOfMonth(previousMonthDate),
     };
 
     const filterTransactions = (txs, from, to, memberId) => {
@@ -43,7 +36,6 @@ const DashboardPage = ({ transactions, members, budgets, selectedYear, selectedM
     };
 
     const currentTransactions = filterTransactions(transactions, dateRange.from, dateRange.to, selectedMemberId);
-    const previousTransactions = filterTransactions(transactions, previousDateRange.from, previousDateRange.to, selectedMemberId);
 
     const calculateSummary = (txs) => {
       const income = txs.filter(t => t.type === 'Ingreso').reduce((s, t) => s + t.amount, 0);
@@ -52,7 +44,6 @@ const DashboardPage = ({ transactions, members, budgets, selectedYear, selectedM
     };
 
     const currentSummary = calculateSummary(currentTransactions);
-    const prevSummary = calculateSummary(previousTransactions);
 
     const expenseByCategory = currentTransactions
       .filter(t => t.type === 'Gasto' && t.category)
@@ -93,11 +84,51 @@ const DashboardPage = ({ transactions, members, budgets, selectedYear, selectedM
     });
     const totalSpentOnBudgetCategories = budgetsWithSpending.reduce((sum, b) => sum + b.spent, 0);
     
-    const rate = totalBudgetLimit > 0 ? (totalSpentOnBudgetCategories / totalBudgetLimit) * 100 : 0;
+    const getCycleStart = (closingDay, period) => {
+      const periodEnd = endOfMonth(period);
+      if (closingDay > periodEnd.getDate()) {
+        closingDay = periodEnd.getDate();
+      }
+      const closingDateThisMonth = new Date(period.getFullYear(), period.getMonth(), closingDay);
+      return subDays(closingDateThisMonth, 29);
+    };
 
+    const getCycleEnd = (closingDay, period) => {
+      const periodEnd = endOfMonth(period);
+      if (closingDay > periodEnd.getDate()) {
+        closingDay = periodEnd.getDate();
+      }
+      return new Date(period.getFullYear(), period.getMonth(), closingDay);
+    };
+
+    const cajaBalancesByType = cajas.reduce((acc, caja) => {
+        let cajaTransactions;
+        if (caja.type === 'Tarjeta de Crédito') {
+            const cycleStart = getCycleStart(caja.paymentDay, selectedDate);
+            const cycleEnd = getCycleEnd(caja.paymentDay, selectedDate);
+            cajaTransactions = transactions.filter(t => t.cajaId === caja.id && new Date(t.date) >= cycleStart && new Date(t.date) <= cycleEnd);
+        } else {
+            cajaTransactions = currentTransactions.filter(t => t.cajaId === caja.id);
+        }
+
+        const income = cajaTransactions.filter(t => t.type === 'Ingreso').reduce((s, t) => s + t.amount, 0);
+        const expense = cajaTransactions.filter(t => t.type === 'Gasto').reduce((s, t) => s + t.amount, 0);
+        
+        let balance = income - expense;
+        if (caja.type === 'Tarjeta de Crédito' || caja.type === 'Préstamos') {
+            balance = expense - income;
+        }
+
+        if (!acc[caja.type]) {
+            acc[caja.type] = 0;
+        }
+        acc[caja.type] += balance;
+
+        return acc;
+    }, {});
+    
     return {
       summary: currentSummary,
-      previousSummary: prevSummary,
       cashFlowData: cashFlow,
       expenseChartData: donutData,
       budgetOverviewData: {
@@ -106,20 +137,9 @@ const DashboardPage = ({ transactions, members, budgets, selectedYear, selectedM
         totalSpent: totalSpentOnBudgetCategories,
       },
       recentTransactionsData: recentWithAvatars,
-      consumptionRate: rate,
+      cajaBalances: cajaBalancesByType,
     };
-  }, [transactions, selectedYear, selectedMonth, selectedMemberId, members, budgets]);
-
-  const getChange = (current, previous) => {
-    if (previous === 0 && current > 0) return '+∞%';
-    if (previous === 0 && current === 0) return '0%';
-    if (previous === 0) return '0%';
-    const change = ((current - previous) / Math.abs(previous)) * 100;
-    return `${change > 0 ? '+' : ''}${change.toFixed(0)}%`;
-  };
-
-  const incomeChange = getChange(summary.totalIncome, previousSummary.totalIncome);
-  const expenseChange = getChange(summary.totalExpenses, previousSummary.totalExpenses);
+  }, [transactions, selectedYear, selectedMonth, selectedMemberId, members, budgets, cajas]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -147,11 +167,9 @@ const DashboardPage = ({ transactions, members, budgets, selectedYear, selectedM
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <SummaryCard title="Ingresos Totales" amount={summary.totalIncome} icon={<ArrowUpCircle />} colorClass={{bg: 'bg-green-100', text: 'text-green-600'}} change={incomeChange} changeType={summary.totalIncome >= previousSummary.totalIncome ? 'good' : 'bad'} metricType="income" />
-        <SummaryCard title="Gastos Totales" amount={summary.totalExpenses} icon={<ArrowDownCircle />} colorClass={{bg: 'bg-red-100', text: 'text-red-600'}} change={expenseChange} changeType={summary.totalExpenses > previousSummary.totalExpenses ? 'bad' : 'good'} metricType="expense" />
-        <SummaryCard title="Balance General" amount={summary.balance} icon={<Scale />} colorClass={{bg: 'bg-primary-100', text: 'text-primary-600'}} />
-        <ConsumptionRateCard rate={consumptionRate} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <BalanceSummaryCard summary={summary} />
+        <CajaBalancesCard balances={cajaBalances} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

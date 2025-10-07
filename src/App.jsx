@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import DashboardPage from './pages/DashboardPage';
@@ -8,8 +8,10 @@ import CajasPage from './pages/CajasPage';
 import AdvancedReportsPage from './pages/AdvancedReportsPage';
 import BudgetsPage from './pages/BudgetsPage';
 import ArqueoPage from './pages/ArqueoPage';
-import { transactions as initialTransactions, cajas as initialCajas, members, budgets as initialBudgets } from './data/mockData';
+import ScheduledExpensesPage from './pages/ScheduledExpensesPage';
+import { transactions as initialTransactions, cajas as initialCajas, members, budgets as initialBudgets, scheduledExpenses as initialScheduledExpenses } from './data/mockData';
 import { Wallet, Landmark, CreditCard, University } from 'lucide-react';
+import { format } from 'date-fns';
 
 const iconMap = {
   'Efectivo': Wallet,
@@ -27,6 +29,7 @@ function App() {
   const [transactions, setTransactions] = useState(initialTransactions);
   const [cajas, setCajas] = useState(initialCajasWithIcons);
   const [budgets, setBudgets] = useState(initialBudgets);
+  const [scheduledExpenses, setScheduledExpenses] = useState(initialScheduledExpenses);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
 
@@ -52,6 +55,41 @@ function App() {
     });
   };
 
+  const handleAddScheduledExpense = (newExpense) => {
+    setScheduledExpenses(prev => [...prev, { ...newExpense, id: Date.now(), confirmedMonths: [] }]);
+  };
+  
+  const handleConfirmScheduledExpense = (scheduledExpenseId) => {
+    const expenseToConfirm = scheduledExpenses.find(e => e.id === scheduledExpenseId);
+    if (!expenseToConfirm) return;
+
+    const member = members.find(m => m.id === expenseToConfirm.memberId);
+    
+    const newTransaction = {
+      id: Date.now(),
+      date: new Date(selectedYear, selectedMonth, expenseToConfirm.dayOfMonth),
+      description: expenseToConfirm.description,
+      memberId: expenseToConfirm.memberId,
+      memberName: member?.name || 'N/A',
+      cajaId: expenseToConfirm.cajaId,
+      type: 'Gasto',
+      category: expenseToConfirm.category,
+      amount: expenseToConfirm.amount,
+    };
+    handleAddTransactions([newTransaction]);
+
+    const periodKey = format(new Date(selectedYear, selectedMonth), 'yyyy-MM');
+    setScheduledExpenses(prev => prev.map(exp => {
+      if (exp.id === scheduledExpenseId) {
+        return {
+          ...exp,
+          confirmedMonths: [...(exp.confirmedMonths || []), periodKey],
+        };
+      }
+      return exp;
+    }));
+  };
+
   const periodProps = {
     selectedYear,
     selectedMonth,
@@ -59,17 +97,39 @@ function App() {
     onMonthChange: setSelectedMonth,
   };
 
+  const pendingExpenses = useMemo(() => {
+    const selectedDate = new Date(selectedYear, selectedMonth);
+    const periodKey = format(selectedDate, 'yyyy-MM');
+    return scheduledExpenses.filter(exp => {
+      const isConfirmed = exp.confirmedMonths?.includes(periodKey);
+      return !isConfirmed;
+    });
+  }, [scheduledExpenses, selectedYear, selectedMonth]);
+
   return (
     <Router>
-      <Routes>
-        <Route element={<Layout />}>
+      <Layout 
+        pendingExpenses={pendingExpenses}
+        onConfirmScheduledExpense={handleConfirmScheduledExpense}
+        members={members}
+        cajas={cajas}
+      >
+        <Routes>
           <Route 
             path="/" 
-            element={<DashboardPage transactions={transactions} members={members} budgets={budgets} {...periodProps} />} 
+            element={
+              <DashboardPage 
+                transactions={transactions} 
+                members={members} 
+                budgets={budgets} 
+                cajas={cajas} 
+                {...periodProps} 
+              />
+            } 
           />
           <Route 
             path="/miembros" 
-            element={<MembersPage transactions={transactions} onAddTransactions={handleAddTransactions} cajas={cajas} />} 
+            element={<MembersPage transactions={transactions} onAddTransactions={handleAddTransactions} cajas={cajas} members={members} />} 
           />
           <Route 
             path="/cajas" 
@@ -81,7 +141,7 @@ function App() {
           />
           <Route 
             path="/reportes" 
-            element={<ReportsPage transactions={transactions} cajas={cajas} />} 
+            element={<ReportsPage transactions={transactions} cajas={cajas} members={members} />} 
           />
            <Route 
             path="/analisis" 
@@ -91,8 +151,19 @@ function App() {
             path="/presupuesto" 
             element={<BudgetsPage budgets={budgets} transactions={transactions} onSaveBudget={handleSaveBudget} {...periodProps} />} 
           />
-        </Route>
-      </Routes>
+          <Route
+            path="/gastos-programados"
+            element={
+              <ScheduledExpensesPage
+                scheduledExpenses={scheduledExpenses}
+                onAddScheduledExpense={handleAddScheduledExpense}
+                members={members}
+                cajas={cajas}
+              />
+            }
+          />
+        </Routes>
+      </Layout>
     </Router>
   );
 }

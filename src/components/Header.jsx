@@ -1,7 +1,8 @@
 import React from 'react';
-import { PiggyBank, UserCircle, Menu } from 'lucide-react';
+import { UserCircle, Menu } from 'lucide-react';
+import Notifications from './Notifications';
 
-const Header = ({ setSidebarOpen }) => {
+const Header = ({ setSidebarOpen, pendingExpenses, onConfirmScheduledExpense, members, cajas }) => {
   return (
     <header className="sticky top-0 bg-white/90 backdrop-blur-lg border-b border-slate-200 z-30">
       <div className="px-4 sm:px-6 lg:px-8">
@@ -20,7 +21,13 @@ const Header = ({ setSidebarOpen }) => {
           </div>
 
           {/* Header: Right side */}
-          <div className="flex items-center">
+          <div className="flex items-center gap-3">
+            <Notifications 
+              pendingExpenses={pendingExpenses}
+              onConfirm={onConfirmScheduledExpense}
+              members={members}
+              cajas={cajas}
+            />
             <button className="p-2 rounded-full text-slate-500 hover:bg-slate-200 hover:text-slate-800">
               <UserCircle className="h-7 w-7" />
             </button>

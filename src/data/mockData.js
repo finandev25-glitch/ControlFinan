@@ -33,6 +33,8 @@ export const expenseCategories = [
   { name: 'Ocio', icon: Smile },
   { name: 'Salud', icon: HeartPulse },
   { name: 'Educación', icon: GraduationCap },
+  { name: 'Servicios', icon: Home },
+  { name: 'Suscripciones', icon: Smile },
   { name: 'Otros', icon: MoreHorizontal },
 ];
 
@@ -68,7 +70,7 @@ export const cajas = [
       bank: 'Interbank',
       cardNumber: '**** **** **** 5678',
       creditLine: 15000,
-      paymentDay: 28,
+      paymentDay: 25, // Renombrado a día de cierre
       memberId: 1,
     },
     { 
@@ -91,14 +93,36 @@ export const budgets = [
   { category: 'Ocio', limit: 600 },
 ];
 
+export const scheduledExpenses = [
+  {
+    id: 1,
+    description: 'Suscripción a Netflix',
+    amount: 50,
+    category: 'Suscripciones',
+    dayOfMonth: 15,
+    memberId: 1,
+    cajaId: 3,
+    confirmedMonths: [],
+  },
+  {
+    id: 2,
+    description: 'Pago de Internet',
+    amount: 120,
+    category: 'Servicios',
+    dayOfMonth: 20,
+    memberId: 2,
+    cajaId: 2,
+    confirmedMonths: [],
+  },
+];
+
 // Generar transacciones
 const transactionTypes = ['Ingreso', 'Gasto'];
-export const transactions = Array.from({ length: 150 }, (_, i) => {
+export const transactions = Array.from({ length: 250 }, (_, i) => {
   const contributingMembers = members.filter(m => m.role !== 'Dependiente');
   const member = faker.helpers.arrayElement(contributingMembers);
   const type = faker.helpers.arrayElement(transactionTypes);
   
-  // Find a caja that belongs to the member or is general cash
   const memberCajas = cajas.filter(c => c.memberId === member.id || c.type === 'Efectivo');
   const caja = faker.helpers.arrayElement(memberCajas.length > 0 ? memberCajas : cajas);
   
@@ -118,7 +142,7 @@ export const transactions = Array.from({ length: 150 }, (_, i) => {
   
   return {
     id: i + 1,
-    date: faker.date.recent({ days: 60 }),
+    date: faker.date.between({ from: '2025-01-01', to: '2025-10-31' }),
     description: description,
     memberId: member.id,
     memberName: member.name,

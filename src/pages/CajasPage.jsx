@@ -83,7 +83,7 @@ const CajasPage = ({ transactions, cajas, onAddCaja, members }) => {
                       <>
                         <InfoLine icon={Landmark} label="Banco" value={caja.bank} />
                         <InfoLine icon={Banknote} label="Línea" value={formatCurrency(caja.creditLine)} />
-                        <InfoLine icon={Calendar} label="Día de Pago" value={caja.paymentDay} />
+                        <InfoLine icon={Calendar} label="Día de Cierre" value={caja.paymentDay} />
                       </>
                     )}
                      {caja.type === 'Préstamos' && (
@@ -108,7 +108,7 @@ const CajasPage = ({ transactions, cajas, onAddCaja, members }) => {
                 <div className="mt-auto pt-4 border-t border-slate-100">
                   <p className="text-3xl font-bold text-slate-800">{formatCurrency(caja.balance)}</p>
                   <p className="text-xs text-slate-500">
-                    {caja.type === 'Tarjeta de Crédito' ? 'Deuda actual' : 'Balance actual'}
+                    {caja.type === 'Tarjeta de Crédito' ? 'Deuda acumulada' : 'Balance actual'}
                   </p>
                 </div>
               </div>

@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { PiggyBank, LayoutDashboard, Users, Wallet, Target, BarChart3, FileText, X, ClipboardCheck } from 'lucide-react';
+import { PiggyBank, LayoutDashboard, Users, Wallet, Target, BarChart3, FileText, X, ClipboardCheck, CalendarClock } from 'lucide-react';
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
   const location = useLocation();
@@ -18,6 +18,17 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
         : 'text-slate-200 hover:bg-primary-800 hover:text-white'
     }`;
 
+  const navLinks = [
+    { to: "/", icon: LayoutDashboard, text: "Dashboard" },
+    { to: "/miembros", icon: Users, text: "Miembros" },
+    { to: "/cajas", icon: Wallet, text: "Cajas" },
+    { to: "/arqueo", icon: ClipboardCheck, text: "Arqueo de Caja" },
+    { to: "/gastos-programados", icon: CalendarClock, text: "Gastos Programados" },
+    { to: "/presupuesto", icon: Target, text: "Presupuesto" },
+    { to: "/reportes", icon: BarChart3, text: "Reportes" },
+    { to: "/analisis", icon: FileText, text: "Análisis" },
+  ];
+
   return (
     <>
       {/* Sidebar for Desktop */}
@@ -27,34 +38,12 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
           <span className="text-2xl font-bold">FamilyFin</span>
         </div>
         <nav className="flex-1 space-y-2">
-          <NavLink to="/" className={navLinkClass}>
-            <LayoutDashboard size={20} />
-            <span>Dashboard</span>
-          </NavLink>
-          <NavLink to="/miembros" className={navLinkClass}>
-            <Users size={20} />
-            <span>Miembros</span>
-          </NavLink>
-          <NavLink to="/cajas" className={navLinkClass}>
-            <Wallet size={20} />
-            <span>Cajas</span>
-          </NavLink>
-          <NavLink to="/arqueo" className={navLinkClass}>
-            <ClipboardCheck size={20} />
-            <span>Arqueo de Caja</span>
-          </NavLink>
-          <NavLink to="/presupuesto" className={navLinkClass}>
-            <Target size={20} />
-            <span>Presupuesto</span>
-          </NavLink>
-          <NavLink to="/reportes" className={navLinkClass}>
-            <BarChart3 size={20} />
-            <span>Reportes</span>
-          </NavLink>
-          <NavLink to="/analisis" className={navLinkClass}>
-            <FileText size={20} />
-            <span>Análisis</span>
-          </NavLink>
+          {navLinks.map(link => (
+            <NavLink key={link.to} to={link.to} className={navLinkClass}>
+              <link.icon size={20} />
+              <span>{link.text}</span>
+            </NavLink>
+          ))}
         </nav>
       </aside>
 
@@ -83,34 +72,12 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
           <span className="text-2xl font-bold">FamilyFin</span>
         </div>
         <nav className="flex-1 space-y-2">
-          <NavLink to="/" className={navLinkClass}>
-            <LayoutDashboard size={20} />
-            <span>Dashboard</span>
-          </NavLink>
-          <NavLink to="/miembros" className={navLinkClass}>
-            <Users size={20} />
-            <span>Miembros</span>
-          </NavLink>
-          <NavLink to="/cajas" className={navLinkClass}>
-            <Wallet size={20} />
-            <span>Cajas</span>
-          </NavLink>
-          <NavLink to="/arqueo" className={navLinkClass}>
-            <ClipboardCheck size={20} />
-            <span>Arqueo de Caja</span>
-          </NavLink>
-          <NavLink to="/presupuesto" className={navLinkClass}>
-            <Target size={20} />
-            <span>Presupuesto</span>
-          </NavLink>
-          <NavLink to="/reportes" className={navLinkClass}>
-            <BarChart3 size={20} />
-            <span>Reportes</span>
-          </NavLink>
-          <NavLink to="/analisis" className={navLinkClass}>
-            <FileText size={20} />
-            <span>Análisis</span>
-          </NavLink>
+          {navLinks.map(link => (
+            <NavLink key={link.to} to={link.to} className={navLinkClass}>
+              <link.icon size={20} />
+              <span>{link.text}</span>
+            </NavLink>
+          ))}
         </nav>
       </aside>
     </>

@@ -17,7 +17,7 @@ const TypeBadge = ({ type }) => {
   return <span className={`${baseClasses} ${typeClasses[type]}`}>{type}</span>;
 };
 
-const ReportsPage = ({ transactions, cajas }) => {
+const ReportsPage = ({ transactions, cajas, members }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('Todos');
   const [filterMember, setFilterMember] = useState('Todos');
