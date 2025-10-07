@@ -26,6 +26,8 @@ function App() {
   const [transactions, setTransactions] = useState(initialTransactions);
   const [cajas, setCajas] = useState(initialCajasWithIcons);
   const [budgets, setBudgets] = useState(initialBudgets);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
 
   const handleAddTransactions = (newTransactions) => {
     const transactionsToAdd = Array.isArray(newTransactions) ? newTransactions : [newTransactions];
@@ -49,13 +51,20 @@ function App() {
     });
   };
 
+  const periodProps = {
+    selectedYear,
+    selectedMonth,
+    onYearChange: setSelectedYear,
+    onMonthChange: setSelectedMonth,
+  };
+
   return (
     <Router>
       <Routes>
         <Route element={<Layout />}>
           <Route 
             path="/" 
-            element={<DashboardPage transactions={transactions} members={members} budgets={budgets} />} 
+            element={<DashboardPage transactions={transactions} members={members} budgets={budgets} {...periodProps} />} 
           />
           <Route 
             path="/miembros" 
@@ -71,11 +80,11 @@ function App() {
           />
            <Route 
             path="/analisis" 
-            element={<AdvancedReportsPage transactions={transactions} members={members} />} 
+            element={<AdvancedReportsPage transactions={transactions} members={members} {...periodProps} />} 
           />
           <Route 
             path="/presupuesto" 
-            element={<BudgetsPage budgets={budgets} transactions={transactions} onSaveBudget={handleSaveBudget} />} 
+            element={<BudgetsPage budgets={budgets} transactions={transactions} onSaveBudget={handleSaveBudget} {...periodProps} />} 
           />
         </Route>
       </Routes>

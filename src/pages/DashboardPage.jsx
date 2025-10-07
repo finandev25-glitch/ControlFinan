@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import SummaryCard from '../components/SummaryCard';
 import ExpenseChart from '../components/ExpenseChart';
 import CashFlowChart from '../components/CashFlowChart';
-import MonthSelector from '../components/MonthSelector';
+import PeriodSelector from '../components/PeriodSelector';
 import BudgetOverview from '../components/BudgetOverview';
 import RecentTransactionsList from '../components/RecentTransactionsList';
 import ConsumptionRateCard from '../components/ConsumptionRateCard';
@@ -10,8 +10,7 @@ import { ArrowUpCircle, ArrowDownCircle, Scale, Users } from 'lucide-react';
 import { startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { members as allMembers, expenseCategories } from '../data/mockData';
 
-const DashboardPage = ({ transactions, members, budgets }) => {
-  const [monthOffset, setMonthOffset] = useState(0);
+const DashboardPage = ({ transactions, members, budgets, selectedYear, selectedMonth, onYearChange, onMonthChange }) => {
   const [selectedMemberId, setSelectedMemberId] = useState('all');
 
   const {
@@ -23,15 +22,13 @@ const DashboardPage = ({ transactions, members, budgets }) => {
     recentTransactionsData,
     consumptionRate,
   } = useMemo(() => {
-    const now = new Date();
-    
-    const currentMonthDate = subMonths(now, monthOffset);
+    const selectedDate = new Date(selectedYear, selectedMonth);
     const dateRange = {
-      from: startOfMonth(currentMonthDate),
-      to: endOfMonth(currentMonthDate),
+      from: startOfMonth(selectedDate),
+      to: endOfMonth(selectedDate),
     };
 
-    const previousMonthDate = subMonths(now, monthOffset + 1);
+    const previousMonthDate = subMonths(selectedDate, 1);
     const previousDateRange = {
       from: startOfMonth(previousMonthDate),
       to: endOfMonth(previousMonthDate),
@@ -111,7 +108,7 @@ const DashboardPage = ({ transactions, members, budgets }) => {
       recentTransactionsData: recentWithAvatars,
       consumptionRate: rate,
     };
-  }, [transactions, monthOffset, selectedMemberId, members, budgets]);
+  }, [transactions, selectedYear, selectedMonth, selectedMemberId, members, budgets]);
 
   const getChange = (current, previous) => {
     if (previous === 0 && current > 0) return '+∞%';
@@ -125,7 +122,7 @@ const DashboardPage = ({ transactions, members, budgets }) => {
   const expenseChange = getChange(summary.totalExpenses, previousSummary.totalExpenses);
 
   return (
-    <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <div>
             <h1 className="text-3xl font-bold text-slate-800">Dashboard</h1>
@@ -146,7 +143,7 @@ const DashboardPage = ({ transactions, members, budgets }) => {
                     {allMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                 </select>
             </div>
-            <MonthSelector monthOffset={monthOffset} onMonthChange={setMonthOffset} />
+            <PeriodSelector selectedYear={selectedYear} selectedMonth={selectedMonth} onYearChange={onYearChange} onMonthChange={onMonthChange} />
         </div>
       </div>
 

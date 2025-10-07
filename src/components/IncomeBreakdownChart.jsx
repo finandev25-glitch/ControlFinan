@@ -6,7 +6,7 @@ import { useMediaQuery } from '../hooks/useMediaQuery';
 
 const fullConfig = resolveConfig(tailwindConfig);
 
-const ExpenseChart = ({ data, height = '300px' }) => {
+const IncomeBreakdownChart = ({ data }) => {
   const isMobile = useMediaQuery('(max-width: 768px)');
 
   const option = {
@@ -15,7 +15,6 @@ const ExpenseChart = ({ data, height = '300px' }) => {
       formatter: '{b}: S/ {c} ({d}%)'
     },
     legend: {
-      show: height !== '150px',
       orient: isMobile ? 'horizontal' : 'vertical',
       left: isMobile ? 'center' : 'left',
       top: isMobile ? 'bottom' : 'center',
@@ -24,19 +23,18 @@ const ExpenseChart = ({ data, height = '300px' }) => {
       }
     },
     color: [
-      fullConfig.theme.colors.primary[500],
-      fullConfig.theme.colors.sky[400],
-      fullConfig.theme.colors.emerald[400],
-      fullConfig.theme.colors.amber[400],
-      fullConfig.theme.colors.rose[400],
-      fullConfig.theme.colors.violet[400],
+      fullConfig.theme.colors.green[500],
+      fullConfig.theme.colors.teal[400],
+      fullConfig.theme.colors.cyan[400],
+      fullConfig.theme.colors.sky[500],
+      fullConfig.theme.colors.lime[500],
     ],
     series: [
       {
-        name: 'Gastos por Categoría',
+        name: 'Ingresos por Categoría',
         type: 'pie',
         radius: ['50%', '70%'],
-        center: height === '150px' ? ['50%', '50%'] : (isMobile ? ['50%', '45%'] : ['75%', '50%']),
+        center: isMobile ? ['50%', '45%'] : ['75%', '50%'],
         avoidLabelOverlap: false,
         label: {
           show: false,
@@ -57,7 +55,11 @@ const ExpenseChart = ({ data, height = '300px' }) => {
     ]
   };
 
-  return <ReactECharts option={option} style={{ height: height }} notMerge={true} />;
+  if (!data || data.length === 0) {
+    return <div className="flex items-center justify-center h-[300px] text-slate-500">No hay datos de ingresos para mostrar.</div>;
+  }
+
+  return <ReactECharts option={option} style={{ height: '300px' }} notMerge={true} />;
 };
 
-export default ExpenseChart;
+export default IncomeBreakdownChart;

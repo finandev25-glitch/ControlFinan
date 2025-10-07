@@ -5,7 +5,7 @@ import tailwindConfig from '../../tailwind.config.js';
 
 const fullConfig = resolveConfig(tailwindConfig);
 
-const ExpenseTimelineChart = ({ data }) => {
+const ExpenseTimelineChart = ({ data, onEvents }) => {
   const option = {
     tooltip: {
       trigger: 'axis',
@@ -23,7 +23,7 @@ const ExpenseTimelineChart = ({ data }) => {
     xAxis: [
       {
         type: 'category',
-        data: data.dates,
+        data: data.labels,
         axisTick: {
           alignWithLabel: true
         },
@@ -69,7 +69,7 @@ const ExpenseTimelineChart = ({ data }) => {
     return <div className="flex items-center justify-center h-[350px] text-slate-500">Selecciona una categoría para ver su línea de tiempo.</div>;
   }
 
-  return <ReactECharts option={option} style={{ height: '350px' }} notMerge={true} />;
+  return <ReactECharts option={option} style={{ height: '350px' }} notMerge={true} onEvents={onEvents} />;
 };
 
 export default ExpenseTimelineChart;

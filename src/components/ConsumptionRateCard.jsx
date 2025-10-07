@@ -2,10 +2,13 @@ import React from 'react';
 import ReactECharts from 'echarts-for-react';
 import resolveConfig from 'tailwindcss/resolveConfig';
 import tailwindConfig from '../../tailwind.config.js';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 
 const fullConfig = resolveConfig(tailwindConfig);
 
 const ConsumptionRateCard = ({ rate }) => {
+  const isMobile = useMediaQuery('(max-width: 640px)');
+
   const option = {
     series: [
       {
@@ -50,7 +53,7 @@ const ConsumptionRateCard = ({ rate }) => {
           valueAnimation: true,
           formatter: '{value}%',
           color: 'auto',
-          fontSize: 28,
+          fontSize: isMobile ? 22 : 28,
           fontWeight: 'bold',
           offsetCenter: [0, '-10%'],
         },
