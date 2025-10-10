@@ -31,8 +31,8 @@ function App() {
   const [cajas, setCajas] = useState(initialCajasWithIcons);
   const [budgets, setBudgets] = useState(initialBudgets);
   const [scheduledExpenses, setScheduledExpenses] = useState(initialScheduledExpenses);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(2025);
+  const [selectedMonth, setSelectedMonth] = useState(9); // October (0-indexed)
   const [expenseToConfirm, setExpenseToConfirm] = useState(null);
 
   const handleAddTransactions = (newTransactions) => {
@@ -42,7 +42,35 @@ function App() {
 
   const handleAddCaja = (newCaja) => {
     const icon = iconMap[newCaja.type] || Wallet;
-    setCajas(prev => [...prev, { ...newCaja, id: Date.now(), icon }]);
+    const newCajaWithId = { ...newCaja, id: Date.now(), icon };
+    setCajas(prev => [...prev, newCajaWithId]);
+
+    // Auto-create scheduled expense for loans and credit cards
+    if (newCaja.type === 'Préstamos' && newCaja.monthlyPayment > 0) {
+      const newExpense = {
+        description: `Cuota de ${newCaja.name}`,
+        amount: parseFloat(newCaja.monthlyPayment),
+        category: 'Vivienda', // Or a more generic category
+        dayOfMonth: parseInt(newCaja.paymentDay),
+        memberId: newCaja.memberId,
+        cajaId: newCajaWithId.id,
+        isAutomatic: true,
+      };
+      handleAddScheduledExpense(newExpense);
+    } else if (newCaja.type === 'Tarjeta de Crédito') {
+      const newExpense = {
+        description: `Pago de Tarjeta ${newCaja.name}`,
+        amount: 0, // Dynamic amount
+        category: 'Servicios', // Or a more generic category
+        dayOfMonth: parseInt(newCaja.limitPaymentDay),
+        memberId: newCaja.memberId,
+        cajaId: newCajaWithId.id,
+        isAutomatic: true,
+        isCreditCardPayment: true,
+        creditCardId: newCajaWithId.id,
+      };
+      handleAddScheduledExpense(newExpense);
+    }
   };
 
   const handleSaveBudget = (newBudget) => {
@@ -62,7 +90,25 @@ function App() {
   };
   
   const handleOpenConfirmModal = (expense) => {
-    setExpenseToConfirm(expense);
+    let expenseToReview = { ...expense };
+    if (expense.isCreditCardPayment) {
+        const creditCard = cajas.find(c => c.id === expense.creditCardId);
+        if (creditCard) {
+            const today = new Date();
+            const cycleStart = new Date(today.getFullYear(), today.getMonth() -1, creditCard.paymentDay + 1);
+            const cycleEnd = new Date(today.getFullYear(), today.getMonth(), creditCard.paymentDay);
+            
+            const cycleTransactions = transactions.filter(t => 
+                t.cajaId === creditCard.id &&
+                t.type === 'Gasto' &&
+                new Date(t.date) >= cycleStart &&
+                new Date(t.date) <= cycleEnd
+            );
+            const cycleTotal = cycleTransactions.reduce((sum, t) => sum + t.amount, 0);
+            expenseToReview.amount = cycleTotal;
+        }
+    }
+    setExpenseToConfirm(expenseToReview);
   };
 
   const handleCloseConfirmModal = () => {
@@ -139,7 +185,8 @@ function App() {
                 transactions={transactions} 
                 members={members} 
                 budgets={budgets} 
-                cajas={cajas} 
+                cajas={cajas}
+                scheduledExpenses={scheduledExpenses}
                 {...periodProps} 
               />
             } 
