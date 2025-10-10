@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { PlusCircle } from 'lucide-react';
-import { expenseCategories } from '../data/mockData';
+import { expenseCategories } from '../data/constants';
 import BudgetCard from '../components/BudgetCard';
 import AddBudgetModal from '../components/AddBudgetModal';
 import PeriodSelector from '../components/PeriodSelector';
@@ -14,18 +14,17 @@ const BudgetsPage = ({ budgets, transactions, onSaveBudget, selectedYear, select
     const monthStart = startOfMonth(selectedDate);
     const monthEnd = endOfMonth(selectedDate);
 
-    // Filter transactions for the selected month only
     const monthlyTransactions = transactions.filter(t => {
-        const txDate = new Date(t.date);
+        const txDate = new Date(t.fecha);
         return txDate >= monthStart && txDate <= monthEnd;
     });
 
     return budgets.map(budget => {
       const spent = monthlyTransactions
-        .filter(t => t.type === 'Gasto' && t.category === budget.category)
-        .reduce((sum, t) => sum + t.amount, 0);
+        .filter(t => t.tipo === 'Gasto' && t.categoria === budget.categoria)
+        .reduce((sum, t) => sum + t.monto, 0);
       
-      const categoryInfo = expenseCategories.find(c => c.name === budget.category);
+      const categoryInfo = expenseCategories.find(c => c.name === budget.categoria);
 
       return {
         ...budget,
@@ -57,7 +56,7 @@ const BudgetsPage = ({ budgets, transactions, onSaveBudget, selectedYear, select
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {budgetsWithSpending.map(budget => (
-            <BudgetCard key={budget.category} budget={budget} />
+            <BudgetCard key={budget.categoria} budget={budget} />
           ))}
            {budgets.length === 0 && (
             <div className="md:col-span-2 xl:col-span-3 text-center py-16 rounded-lg bg-slate-50 border-2 border-dashed border-slate-200">

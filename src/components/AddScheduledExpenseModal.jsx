@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import { expenseCategories } from '../data/mockData';
+import { expenseCategories } from '../data/constants';
 import CategorySelector from './CategorySelector';
 
 const FormInput = ({ id, label, ...props }) => (
@@ -31,12 +31,12 @@ const FormSelect = ({ id, label, children, ...props }) => (
 
 const AddScheduledExpenseModal = ({ isOpen, onClose, onSave, members, cajas }) => {
   const getInitialState = () => ({
-    description: '',
-    amount: '',
-    category: expenseCategories[0].name,
-    dayOfMonth: '15',
-    memberId: members[0]?.id || '',
-    cajaId: cajas[0]?.id || '',
+    descripcion: '',
+    monto: '',
+    categoria: expenseCategories[0].name,
+    dia_del_mes: '15',
+    miembro_id: members[0]?.id || '',
+    caja_id: cajas[0]?.id || '',
   });
 
   const [formData, setFormData] = useState(getInitialState());
@@ -49,17 +49,17 @@ const AddScheduledExpenseModal = ({ isOpen, onClose, onSave, members, cajas }) =
   };
 
   const handleCategoryChange = (categoryName) => {
-    setFormData(prev => ({ ...prev, category: categoryName }));
+    setFormData(prev => ({ ...prev, categoria: categoryName }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     onSave({
       ...formData,
-      amount: parseFloat(formData.amount) || 0,
-      dayOfMonth: parseInt(formData.dayOfMonth) || 1,
-      memberId: parseInt(formData.memberId),
-      cajaId: parseInt(formData.cajaId),
+      monto: parseFloat(formData.monto) || 0,
+      dia_del_mes: parseInt(formData.dia_del_mes) || 1,
+      miembro_id: parseInt(formData.miembro_id),
+      caja_id: parseInt(formData.caja_id),
     });
     onClose();
     setFormData(getInitialState());
@@ -75,22 +75,22 @@ const AddScheduledExpenseModal = ({ isOpen, onClose, onSave, members, cajas }) =
         <p className="text-slate-500 mb-6">Registra un gasto que se repite cada mes.</p>
         
         <form onSubmit={handleSubmit} className="space-y-4">
-            <FormInput id="description" name="description" label="Descripción" placeholder="Ej: Suscripción a Spotify" value={formData.description} onChange={handleInputChange} />
+            <FormInput id="description" name="descripcion" label="Descripción" placeholder="Ej: Suscripción a Spotify" value={formData.descripcion} onChange={handleInputChange} />
             <div className="grid grid-cols-2 gap-4">
-                <FormInput id="amount" name="amount" label="Monto (S/)" type="number" step="0.01" placeholder="50.00" value={formData.amount} onChange={handleInputChange} />
-                <FormInput id="dayOfMonth" name="dayOfMonth" label="Día de Pago (del mes)" type="number" min="1" max="31" placeholder="15" value={formData.dayOfMonth} onChange={handleInputChange} />
+                <FormInput id="amount" name="monto" label="Monto (S/)" type="number" step="0.01" placeholder="50.00" value={formData.monto} onChange={handleInputChange} />
+                <FormInput id="dayOfMonth" name="dia_del_mes" label="Día de Pago (del mes)" type="number" min="1" max="31" placeholder="15" value={formData.dia_del_mes} onChange={handleInputChange} />
             </div>
             <CategorySelector
               label="Categoría"
               categories={expenseCategories}
-              selectedCategory={formData.category}
+              selectedCategory={formData.categoria}
               onSelect={handleCategoryChange}
             />
             <div className="grid grid-cols-2 gap-4">
-                <FormSelect id="memberId" name="memberId" label="Miembro Responsable" value={formData.memberId} onChange={handleInputChange}>
+                <FormSelect id="memberId" name="miembro_id" label="Miembro Responsable" value={formData.miembro_id} onChange={handleInputChange}>
                     {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                 </FormSelect>
-                <FormSelect id="cajaId" name="cajaId" label="Caja de Origen" value={formData.cajaId} onChange={handleInputChange}>
+                <FormSelect id="cajaId" name="caja_id" label="Caja de Origen" value={formData.caja_id} onChange={handleInputChange}>
                     {cajas.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </FormSelect>
             </div>

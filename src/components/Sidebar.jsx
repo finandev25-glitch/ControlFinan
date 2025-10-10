@@ -32,7 +32,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
   return (
     <>
       {/* Sidebar for Desktop */}
-      <aside className="hidden md:flex md:flex-col w-64 bg-primary-900 text-white p-4">
+      <aside className="hidden lg:flex lg:flex-col w-64 bg-primary-900 text-white p-4">
         <div className="flex items-center gap-3 mb-8 px-2">
           <PiggyBank className="h-10 w-10 text-white" />
           <span className="text-2xl font-bold">FamilyFin</span>
@@ -47,9 +47,9 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
         </nav>
       </aside>
 
-      {/* Sidebar for Mobile */}
+      {/* Sidebar for Mobile/Tablet */}
       <div
-        className={`fixed inset-0 bg-slate-900 bg-opacity-30 z-40 md:hidden md:z-auto transition-opacity duration-200 ${
+        className={`fixed inset-0 bg-slate-900 bg-opacity-30 z-40 lg:hidden lg:z-auto transition-opacity duration-200 ${
           sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
         aria-hidden="true"
@@ -57,7 +57,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
       ></div>
       <aside
         ref={sidebar}
-        className={`fixed left-0 top-0 z-40 h-screen w-64 -translate-x-full md:hidden transition-transform duration-200 ease-in-out ${
+        className={`fixed left-0 top-0 z-40 h-screen w-64 -translate-x-full lg:hidden transition-transform duration-200 ease-in-out ${
           sidebarOpen ? 'translate-x-0' : ''
         } bg-primary-900 text-white p-4 flex flex-col`}
       >

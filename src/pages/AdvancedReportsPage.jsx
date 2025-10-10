@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek, format, startOfDay, endOfDay, subWeeks, startOfYear, eachDayOfInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { members, expenseCategories } from '../data/mockData';
+import { expenseCategories } from '../data/constants';
 import MonthlyComparisonCard from '../components/MonthlyComparisonCard';
 import ExpenseChart from '../components/ExpenseChart';
 import DetailedExpenseTable from '../components/DetailedExpenseTable';
@@ -31,17 +31,17 @@ const AdvancedReportsPage = ({ transactions, members, selectedYear, selectedMont
 
     const calculateStats = (startDate, endDate) => {
       const filtered = transactions.filter(t => {
-        const txDate = new Date(t.date);
+        const txDate = new Date(t.fecha);
         return txDate >= startDate && txDate <= endDate;
       });
 
-      const income = filtered.filter(t => t.type === 'Ingreso').reduce((sum, t) => sum + t.amount, 0);
-      const expenses = filtered.filter(t => t.type === 'Gasto').reduce((sum, t) => sum + t.amount, 0);
+      const income = filtered.filter(t => t.tipo === 'Ingreso').reduce((sum, t) => sum + t.monto, 0);
+      const expenses = filtered.filter(t => t.tipo === 'Gasto').reduce((sum, t) => sum + t.monto, 0);
       
       const expenseDistribution = filtered
-        .filter(t => t.type === 'Gasto' && t.category)
+        .filter(t => t.tipo === 'Gasto' && t.categoria)
         .reduce((acc, t) => {
-          acc[t.category] = (acc[t.category] || 0) + t.amount;
+          acc[t.categoria] = (acc[t.categoria] || 0) + t.monto;
           return acc;
         }, {});
       
@@ -58,12 +58,12 @@ const AdvancedReportsPage = ({ transactions, members, selectedYear, selectedMont
 
   const memberFilteredExpenses = useMemo(() => {
     const filtered = transactions.filter(t => {
-      const memberMatch = selectedMemberId === 'all' || t.memberId === parseInt(selectedMemberId);
-      return t.type === 'Gasto' && t.category && memberMatch;
+      const memberMatch = selectedMemberId === 'all' || t.miembro_id === parseInt(selectedMemberId);
+      return t.tipo === 'Gasto' && t.categoria && memberMatch;
     });
 
     const expenseDistribution = filtered.reduce((acc, t) => {
-        acc[t.category] = (acc[t.category] || 0) + t.amount;
+        acc[t.categoria] = (acc[t.categoria] || 0) + t.monto;
         return acc;
     }, {});
 
@@ -72,13 +72,13 @@ const AdvancedReportsPage = ({ transactions, members, selectedYear, selectedMont
 
   const categoryFilteredExpenses = useMemo(() => {
     return transactions.filter(t => {
-      const categoryMatch = selectedCategoryId === 'all' || t.category === selectedCategoryId;
-      return t.type === 'Gasto' && categoryMatch;
+      const categoryMatch = selectedCategoryId === 'all' || t.categoria === selectedCategoryId;
+      return t.tipo === 'Gasto' && categoryMatch;
     });
   }, [transactions, selectedCategoryId]);
 
   const timelineChartData = useMemo(() => {
-    const baseTransactions = transactions.filter(t => t.type === 'Gasto' && t.category === timelineCategory);
+    const baseTransactions = transactions.filter(t => t.tipo === 'Gasto' && t.categoria === timelineCategory);
     const now = new Date();
     let data;
     let result = { labels: [], amounts: [], dateRanges: [] };
@@ -88,13 +88,13 @@ const AdvancedReportsPage = ({ transactions, members, selectedYear, selectedMont
       const endOfToday = endOfDay(now);
       
       const yearlyTransactions = baseTransactions.filter(t => {
-          const txDate = new Date(t.date);
+          const txDate = new Date(t.fecha);
           return txDate >= startOfCurrentYear && txDate <= endOfToday;
       });
 
       data = yearlyTransactions.reduce((acc, t) => {
-        const date = startOfDay(new Date(t.date)).toISOString();
-        acc[date] = (acc[date] || 0) + t.amount;
+        const date = startOfDay(new Date(t.fecha)).toISOString();
+        acc[date] = (acc[date] || 0) + t.monto;
         return acc;
       }, {});
       const dateMap = new Map(Object.entries(data));
@@ -108,28 +108,35 @@ const AdvancedReportsPage = ({ transactions, members, selectedYear, selectedMont
     }
 
     if (timelineInterval === 'Semanal') {
-      const sixWeeksAgo = startOfWeek(subWeeks(now, 5), { weekStartsOn: 1 });
-      const weeklyTransactions = baseTransactions.filter(t => new Date(t.date) >= sixWeeksAgo);
-      data = weeklyTransactions.reduce((acc, t) => {
-        const weekStart = startOfWeek(new Date(t.date), { weekStartsOn: 1 }).toISOString();
-        acc[weekStart] = (acc[weekStart] || 0) + t.amount;
-        return acc;
-      }, {});
-      const dateMap = new Map(Object.entries(data));
-      const allWeeks = Array.from({ length: 6 }).map((_, i) => startOfWeek(subWeeks(now, i), { weekStartsOn: 1 }).toISOString()).reverse();
+        const startOfCurrentYear = startOfYear(now);
+        const endOfToday = endOfDay(now);
+        const weeklyTransactions = baseTransactions.filter(t => new Date(t.fecha) >= startOfCurrentYear && new Date(t.fecha) <= endOfToday);
+        data = weeklyTransactions.reduce((acc, t) => {
+            const weekStart = startOfWeek(new Date(t.fecha), { weekStartsOn: 1 }).toISOString();
+            acc[weekStart] = (acc[weekStart] || 0) + t.monto;
+            return acc;
+        }, {});
+        const dateMap = new Map(Object.entries(data));
+        
+        let currentWeek = startOfWeek(startOfCurrentYear, { weekStartsOn: 1 });
+        const allWeeks = [];
+        while(currentWeek <= endOfToday) {
+            allWeeks.push(currentWeek.toISOString());
+            currentWeek = addDays(currentWeek, 7);
+        }
 
-      result.labels = allWeeks.map(w => format(endOfWeek(new Date(w), { weekStartsOn: 1 }), 'dd MMM', { locale: es }));
-      result.amounts = allWeeks.map(w => dateMap.get(w) || 0);
-      result.dateRanges = allWeeks.map(w => ({ start: new Date(w), end: endOfWeek(new Date(w), { weekStartsOn: 1 }) }));
-      return result;
+        result.labels = allWeeks.map(w => format(endOfWeek(new Date(w), { weekStartsOn: 1 }), 'dd MMM', { locale: es }));
+        result.amounts = allWeeks.map(w => dateMap.get(w) || 0);
+        result.dateRanges = allWeeks.map(w => ({ start: new Date(w), end: endOfWeek(new Date(w), { weekStartsOn: 1 }) }));
+        return result;
     }
 
     if (timelineInterval === 'Mensual') {
       const startOfCurrentYear = startOfYear(now);
-      const monthlyTransactions = baseTransactions.filter(t => new Date(t.date) >= startOfCurrentYear);
+      const monthlyTransactions = baseTransactions.filter(t => new Date(t.fecha) >= startOfCurrentYear);
       data = monthlyTransactions.reduce((acc, t) => {
-        const monthStart = startOfMonth(new Date(t.date)).toISOString();
-        acc[monthStart] = (acc[monthStart] || 0) + t.amount;
+        const monthStart = startOfMonth(new Date(t.fecha)).toISOString();
+        acc[monthStart] = (acc[monthStart] || 0) + t.monto;
         return acc;
       }, {});
       const dateMap = new Map(Object.entries(data));
@@ -156,12 +163,12 @@ const AdvancedReportsPage = ({ transactions, members, selectedYear, selectedMont
 
     const calculateStatsForPeriod = (memberId, start, end) => {
         const memberTransactions = transactions.filter(t => 
-            t.memberId === memberId && 
-            new Date(t.date) >= start && 
-            new Date(t.date) <= end
+            t.miembro_id === memberId && 
+            new Date(t.fecha) >= start && 
+            new Date(t.fecha) <= end
         );
-        const income = memberTransactions.filter(t => t.type === 'Ingreso').reduce((sum, t) => sum + t.amount, 0);
-        const expenses = memberTransactions.filter(t => t.type === 'Gasto').reduce((sum, t) => sum + t.amount, 0);
+        const income = memberTransactions.filter(t => t.tipo === 'Ingreso').reduce((sum, t) => sum + t.monto, 0);
+        const expenses = memberTransactions.filter(t => t.tipo === 'Gasto').reduce((sum, t) => sum + t.monto, 0);
         return { totalIncome: income, totalExpenses: expenses };
     };
 
@@ -176,9 +183,9 @@ const AdvancedReportsPage = ({ transactions, members, selectedYear, selectedMont
 
   const incomeBreakdownData = useMemo(() => {
       const incomeByCategory = transactions
-          .filter(t => t.type === 'Ingreso' && t.category !== 'Transferencia')
+          .filter(t => t.tipo === 'Ingreso' && t.categoria !== 'Transferencia')
           .reduce((acc, t) => {
-              acc[t.category] = (acc[t.category] || 0) + t.amount;
+              acc[t.categoria] = (acc[t.categoria] || 0) + t.monto;
               return acc;
           }, {});
       
@@ -199,9 +206,9 @@ const AdvancedReportsPage = ({ transactions, members, selectedYear, selectedMont
     }
 
     const detailedTransactions = transactions.filter(t => {
-        const txDate = new Date(t.date);
-        return t.type === 'Gasto' &&
-               t.category === timelineCategory &&
+        const txDate = new Date(t.fecha);
+        return t.tipo === 'Gasto' &&
+               t.categoria === timelineCategory &&
                txDate >= start &&
                txDate <= end;
     });
@@ -209,7 +216,7 @@ const AdvancedReportsPage = ({ transactions, members, selectedYear, selectedMont
     setModalData({
         isOpen: true,
         title: title,
-        transactions: detailedTransactions.sort((a,b) => new Date(b.date) - new Date(a.date)),
+        transactions: detailedTransactions.sort((a,b) => new Date(b.fecha) - new Date(a.fecha)),
     });
   };
 
@@ -244,7 +251,7 @@ const AdvancedReportsPage = ({ transactions, members, selectedYear, selectedMont
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-sm">
               <h2 className="text-lg font-semibold mb-4">Resumen por Miembro</h2>
-              <MemberSummary data={memberFinancialSummaryData} />
+              <MemberSummary data={memberFinancialSummaryData} members={members} />
           </div>
           <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-sm">
               <h2 className="text-lg font-semibold mb-4">Desglose de Ingresos</h2>
@@ -323,6 +330,7 @@ const AdvancedReportsPage = ({ transactions, members, selectedYear, selectedMont
         onClose={handleCloseModal}
         title={modalData.title}
         transactions={modalData.transactions}
+        members={members}
       />
     </>
   );

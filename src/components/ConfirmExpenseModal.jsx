@@ -14,22 +14,38 @@ const FormInput = ({ id, label, ...props }) => (
     </div>
 );
 
+const FormSelect = ({ id, label, children, ...props }) => (
+    <div>
+        <label htmlFor={id} className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
+        <select
+            id={id}
+            {...props}
+            className="block w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+            required
+        >
+            {children}
+        </select>
+    </div>
+);
+
+
 const ConfirmExpenseModal = ({ isOpen, onClose, onConfirm, expense, members, cajas }) => {
   const [formData, setFormData] = useState({});
 
   useEffect(() => {
     if (expense) {
       const today = new Date();
+      const availableCajas = cajas.filter(c => c.type !== 'Tarjeta de Crédito' && c.type !== 'Préstamos');
       setFormData({
         description: expense.description,
         amount: expense.amount,
         date: format(new Date(today.getFullYear(), today.getMonth(), expense.dayOfMonth), 'yyyy-MM-dd'),
         category: expense.category,
         memberId: expense.memberId,
-        cajaId: expense.cajaId,
+        cajaId: expense.cajaId || availableCajas[0]?.id || '',
       });
     }
-  }, [expense]);
+  }, [expense, cajas]);
 
   if (!isOpen || !expense) return null;
 
@@ -51,7 +67,6 @@ const ConfirmExpenseModal = ({ isOpen, onClose, onConfirm, expense, members, caj
   };
 
   const member = members.find(m => m.id === expense.memberId);
-  const caja = cajas.find(c => c.id === expense.cajaId);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4 backdrop-blur-sm" onClick={onClose}>
@@ -77,7 +92,13 @@ const ConfirmExpenseModal = ({ isOpen, onClose, onConfirm, expense, members, caj
                 </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 text-sm">
+            <FormSelect id="cajaId" name="cajaId" label="Pagar desde Caja" value={formData.cajaId} onChange={handleInputChange}>
+              {cajas.filter(c => c.type !== 'Tarjeta de Crédito' && c.type !== 'Préstamos').map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </FormSelect>
+
+            <div className="grid grid-cols-2 gap-4 text-sm">
                 <div className="bg-slate-50 p-3 rounded-lg">
                     <p className="font-medium text-slate-500">Categoría</p>
                     <p className="font-semibold text-slate-800">{expense.category}</p>
@@ -85,10 +106,6 @@ const ConfirmExpenseModal = ({ isOpen, onClose, onConfirm, expense, members, caj
                 <div className="bg-slate-50 p-3 rounded-lg">
                     <p className="font-medium text-slate-500">Miembro</p>
                     <p className="font-semibold text-slate-800">{member?.name || 'N/A'}</p>
-                </div>
-                <div className="bg-slate-50 p-3 rounded-lg">
-                    <p className="font-medium text-slate-500">Caja</p>
-                    <p className="font-semibold text-slate-800">{caja?.name || 'N/A'}</p>
                 </div>
             </div>
 

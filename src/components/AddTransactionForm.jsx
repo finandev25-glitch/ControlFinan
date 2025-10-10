@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { incomeCategories, expenseCategories } from '../data/mockData';
+import { incomeCategories, expenseCategories } from '../data/constants';
 import ToggleSwitch from './ToggleSwitch';
 import CategorySelector from './CategorySelector';
 import { CalendarDays, Clock } from 'lucide-react';
@@ -25,7 +25,7 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas 
 
   useEffect(() => {
     const initialMemberId = selectedMemberId || members[0]?.id || '';
-    const initialCaja = cajas.find(c => c.memberId === initialMemberId || c.type === 'Efectivo') || cajas[0];
+    const initialCaja = cajas.find(c => c.miembro_id === initialMemberId || c.type === 'Efectivo') || cajas[0];
     setFormData(prev => ({
       ...getInitialFormState(),
       fromMemberId: initialMemberId,
@@ -36,8 +36,8 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas 
   useEffect(() => {
     if (formData.cajaId) {
       const selectedCaja = cajas.find(c => c.id === parseInt(formData.cajaId));
-      if (selectedCaja && selectedCaja.memberId && formData.type !== 'Transferencia') {
-        setFormData(prev => ({...prev, fromMemberId: selectedCaja.memberId}));
+      if (selectedCaja && selectedCaja.miembro_id && formData.type !== 'Transferencia') {
+        setFormData(prev => ({...prev, fromMemberId: selectedCaja.miembro_id}));
       }
     }
   }, [formData.cajaId, cajas, formData.type]);
@@ -83,7 +83,7 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas 
   
   const categories = formData.type === 'Ingreso' ? incomeCategories : expenseCategories;
   const isTransfer = formData.type === 'Transferencia';
-  const memberSelectDisabled = !isTransfer && !!cajas.find(c => c.id === parseInt(formData.cajaId))?.memberId;
+  const memberSelectDisabled = !isTransfer && !!cajas.find(c => c.id === parseInt(formData.cajaId))?.miembro_id;
 
   return (
     <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-lg">

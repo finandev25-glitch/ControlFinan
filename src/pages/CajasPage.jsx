@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { PlusCircle, Banknote, Calendar, Landmark, CreditCard, University, User } from 'lucide-react';
+import { PlusCircle, Banknote, Calendar, Landmark, CreditCard, University } from 'lucide-react';
 import AddCajaModal from '../components/AddCajaModal';
+import CreditCardDetailModal from '../components/CreditCardDetailModal';
 
 const formatCurrency = (amount) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(amount);
 
@@ -13,7 +14,9 @@ const InfoLine = ({ icon: Icon, label, value }) => (
 );
 
 const CajasPage = ({ transactions, cajas, onAddCaja, members }) => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [selectedCreditCard, setSelectedCreditCard] = useState(null);
 
   const cajasConBalance = useMemo(() => {
     return cajas.map(caja => {
@@ -34,13 +37,25 @@ const CajasPage = ({ transactions, cajas, onAddCaja, members }) => {
     });
   }, [transactions, cajas, members]);
 
+  const handleOpenDetailModal = (caja) => {
+    if (caja.type === 'Tarjeta de Crédito') {
+      setSelectedCreditCard(caja);
+      setIsDetailModalOpen(true);
+    }
+  };
+
+  const handleCloseDetailModal = () => {
+    setIsDetailModalOpen(false);
+    setSelectedCreditCard(null);
+  };
+
   return (
     <>
       <div className="p-4 sm:p-6 lg:p-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-slate-800">Gestión de Cajas</h1>
           <button 
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => setIsAddModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md shadow-sm hover:bg-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-500"
           >
             <PlusCircle size={18} />
@@ -52,8 +67,13 @@ const CajasPage = ({ transactions, cajas, onAddCaja, members }) => {
           {cajasConBalance.map(caja => {
             const Icon = caja.icon;
             const progressPercentage = caja.type === 'Préstamos' ? (caja.paidInstallments / caja.totalInstallments) * 100 : 0;
+            const isClickable = caja.type === 'Tarjeta de Crédito';
             return (
-              <div key={caja.id} className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-sm flex flex-col justify-between hover:shadow-lg hover:border-primary-300 transition-all duration-300">
+              <div 
+                key={caja.id} 
+                className={`bg-white p-6 rounded-xl border border-slate-200/80 shadow-sm flex flex-col justify-between hover:shadow-lg hover:border-primary-300 transition-all duration-300 ${isClickable ? 'cursor-pointer' : ''}`}
+                onClick={() => handleOpenDetailModal(caja)}
+              >
                 <div>
                   <div className="flex items-start justify-between mb-4">
                     <div>
@@ -118,10 +138,16 @@ const CajasPage = ({ transactions, cajas, onAddCaja, members }) => {
         </div>
       </div>
       <AddCajaModal 
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
         onSave={onAddCaja}
         members={members.filter(m => m.role !== 'Dependiente')}
+      />
+      <CreditCardDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={handleCloseDetailModal}
+        card={selectedCreditCard}
+        transactions={transactions}
       />
     </>
   );
