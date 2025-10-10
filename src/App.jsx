@@ -13,6 +13,7 @@ import ConfirmExpenseModal from './components/ConfirmExpenseModal';
 import { supabase } from './supabaseClient';
 import { Wallet, Landmark, CreditCard, University, LoaderCircle } from 'lucide-react';
 import { format, isWithinInterval, addDays, startOfDay } from 'date-fns';
+import { faker } from '@faker-js/faker';
 
 const iconMap = {
   'Efectivo': Wallet,
@@ -36,7 +37,7 @@ function App() {
     const fetchInitialData = async () => {
       setLoading(true);
       try {
-        const { data: membersData } = await supabase.from('miembros').select('*');
+        const { data: membersData } = await supabase.from('members').select('*');
         
         if (membersData && membersData.length === 0) {
           // Database is empty, let's seed it.
@@ -50,11 +51,11 @@ function App() {
           { data: finalBudgets },
           { data: finalScheduled }
         ] = await Promise.all([
-          supabase.from('miembros').select('*'),
+          supabase.from('members').select('*'),
           supabase.from('cajas').select('*'),
-          supabase.from('transacciones').select('*').order('fecha', { ascending: false }),
-          supabase.from('presupuestos').select('*'),
-          supabase.from('gastos_programados').select('*')
+          supabase.from('transactions').select('*').order('fecha', { ascending: false }),
+          supabase.from('budgets').select('*'),
+          supabase.from('scheduled_expenses').select('*')
         ]);
 
         const safeMembers = finalMembers || [];
@@ -78,7 +79,7 @@ function App() {
     console.log("Database is empty. Seeding data...");
     const { members: mockMembers, cajas: mockCajas, transactions: mockTransactions, budgets: mockBudgets, scheduledExpenses: mockScheduled } = await import('./data/seed.js');
     
-    await supabase.from('miembros').insert(mockMembers);
+    await supabase.from('members').insert(mockMembers);
     
     const cajasToInsert = mockCajas.map(({ icon, ...rest }) => rest);
     await supabase.from('cajas').insert(cajasToInsert);
@@ -88,9 +89,9 @@ function App() {
         miembro_id: rest.memberId,
         caja_id: rest.cajaId,
     }));
-    await supabase.from('transacciones').insert(transactionsToInsert);
+    await supabase.from('transactions').insert(transactionsToInsert);
     
-    await supabase.from('presupuestos').insert(mockBudgets);
+    await supabase.from('budgets').insert(mockBudgets);
 
     const scheduledToInsert = mockScheduled.map(({ ...rest }) => ({
         ...rest,
@@ -99,7 +100,7 @@ function App() {
         dia_del_mes: rest.dayOfMonth,
         meses_confirmados: rest.confirmedMonths,
     }));
-    await supabase.from('gastos_programados').insert(scheduledToInsert);
+    await supabase.from('scheduled_expenses').insert(scheduledToInsert);
     console.log("Seeding complete.");
   };
 
@@ -116,7 +117,7 @@ function App() {
       monto: t.amount
     }));
 
-    const { data, error } = await supabase.from('transacciones').insert(supabaseTransactions).select();
+    const { data, error } = await supabase.from('transactions').insert(supabaseTransactions).select();
 
     if (error) {
       console.error('Error adding transactions:', error);
@@ -158,7 +159,7 @@ function App() {
   };
 
   const handleSaveBudget = async (newBudget) => {
-    const { data, error } = await supabase.from('presupuestos').upsert(newBudget, { onConflict: 'categoria' }).select();
+    const { data, error } = await supabase.from('budgets').upsert(newBudget, { onConflict: 'categoria' }).select();
     
     if (error) {
       console.error('Error saving budget:', error);
@@ -176,7 +177,7 @@ function App() {
   };
 
   const handleAddScheduledExpense = async (newExpenseData) => {
-    const { data, error } = await supabase.from('gastos_programados').insert([newExpenseData]).select();
+    const { data, error } = await supabase.from('scheduled_expenses').insert([newExpenseData]).select();
     if (error) {
       console.error('Error adding scheduled expense:', error);
     } else if (data && data.length > 0) {
@@ -184,6 +185,69 @@ function App() {
     }
   };
   
+  const handleAddMember = async (newMemberData) => {
+    const newMember = {
+      ...newMemberData,
+      avatar: faker.image.avatar()
+    };
+    const { data, error } = await supabase.from('members').insert([newMember]).select();
+    if (error) {
+      console.error('Error adding member:', error);
+    } else if (data && data.length > 0) {
+      const newlyAddedMember = data[0];
+      setMembers(prev => [...prev, newlyAddedMember]);
+
+      const newCashBox = {
+          name: `Efectivo ${newlyAddedMember.name}`,
+          type: 'Efectivo',
+          member_id: newlyAddedMember.id,
+      };
+
+      const { data: cajaData, error: cajaError } = await supabase
+          .from('cajas')
+          .insert([newCashBox])
+          .select();
+
+      if (cajaError) {
+          console.error('Error creating default cash box:', cajaError);
+      } else if (cajaData && cajaData.length > 0) {
+          const newCajaWithIcon = { ...cajaData[0], icon: iconMap[cajaData[0].type] };
+          setCajas(prev => [...prev, newCajaWithIcon]);
+      }
+    }
+  };
+
+  const handleDeleteMember = async (memberId) => {
+    const { error: cajasError } = await supabase
+      .from('cajas')
+      .delete()
+      .eq('member_id', memberId);
+
+    if (cajasError) {
+      console.error("Error deleting member's cash boxes:", cajasError);
+      return; 
+    }
+
+    const { error: memberError } = await supabase
+      .from('members')
+      .delete()
+      .eq('id', memberId);
+
+    if (memberError) {
+      console.error('Error deleting member:', memberError);
+      return;
+    }
+
+    setMembers(prev => prev.filter(m => m.id !== memberId));
+    setCajas(prev => prev.filter(c => c.member_id !== memberId));
+    setTransactions(prev => prev.map(t => 
+        t.miembro_id === memberId 
+        ? { ...t, miembro_id: null, memberName: 'Eliminado' } 
+        : t
+    ));
+  };
+
+
   const handleOpenConfirmModal = (expense) => {
     let expenseToReview = { ...expense, amount: expense.monto, dayOfMonth: expense.dia_del_mes, memberId: expense.miembro_id };
     if (expense.es_pago_tarjeta) {
@@ -224,7 +288,7 @@ function App() {
     const updatedConfirmedMonths = [...(scheduledExpense.meses_confirmados || []), periodKey];
 
     const { error } = await supabase
-      .from('gastos_programados')
+      .from('scheduled_expenses')
       .update({ meses_confirmados: updatedConfirmedMonths })
       .eq('id', scheduledExpenseId);
 
@@ -305,11 +369,11 @@ function App() {
           />
           <Route 
             path="/miembros" 
-            element={<MembersPage transactions={transactions} onAddTransactions={handleAddTransactions} cajas={cajas} members={members} />} 
+            element={<MembersPage transactions={transactions} onAddTransactions={handleAddTransactions} cajas={cajas} members={members} onAddMember={handleAddMember} onDeleteMember={handleDeleteMember} />} 
           />
           <Route 
             path="/cajas" 
-            element={<CajasPage transactions={transactions} cajas={cajas} onAddCaja={handleAddCaja} members={members} />} 
+            element={<CajasPage transactions={transactions} cajas={cajas} onAddCaja={handleAddCaja} members={members} onAddTransactions={handleAddTransactions} />} 
           />
           <Route 
             path="/arqueo" 

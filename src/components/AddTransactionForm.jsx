@@ -5,16 +5,34 @@ import CategorySelector from './CategorySelector';
 import { CalendarDays, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 
+const FormSelect = ({ id, label, children, ...props }) => (
+    <div>
+        <label htmlFor={id} className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
+        <select
+            id={id}
+            {...props}
+            className="block w-full px-3 py-3 text-base border-slate-300 bg-slate-50 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-xl"
+            required
+        >
+            {children}
+        </select>
+    </div>
+);
+
 const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas }) => {
   const getInitialFormState = () => {
     const now = new Date();
+    const initialMemberId = selectedMemberId || members[0]?.id || '';
     return {
       description: '',
       amount: '',
       type: 'Ingreso',
-      fromMemberId: selectedMemberId || members[0]?.id || '',
-      toMemberId: members.find(m => m.id !== (selectedMemberId || members[0]?.id))?.id || '',
-      cajaId: cajas[0]?.id || '',
+      memberId: initialMemberId,
+      fromMemberId: initialMemberId,
+      toMemberId: members.find(m => m.id !== initialMemberId)?.id || '',
+      fromCajaId: '',
+      toCajaId: '',
+      cajaId: '',
       category: incomeCategories[0].name,
       date: format(now, 'yyyy-MM-dd'),
       time: format(now, 'HH:mm'),
@@ -24,24 +42,16 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas 
   const [formData, setFormData] = useState(getInitialFormState());
 
   useEffect(() => {
-    const initialMemberId = selectedMemberId || members[0]?.id || '';
-    const initialCaja = cajas.find(c => c.miembro_id === initialMemberId || c.type === 'Efectivo') || cajas[0];
-    setFormData(prev => ({
-      ...getInitialFormState(),
-      fromMemberId: initialMemberId,
-      cajaId: initialCaja?.id || '',
-    }));
+    setFormData(getInitialFormState());
   }, [selectedMemberId, members, cajas]);
 
   useEffect(() => {
-    if (formData.cajaId) {
-      const selectedCaja = cajas.find(c => c.id === parseInt(formData.cajaId));
-      if (selectedCaja && selectedCaja.miembro_id && formData.type !== 'Transferencia') {
-        setFormData(prev => ({...prev, fromMemberId: selectedCaja.miembro_id}));
-      }
+    // Auto-select first caja when member or type changes
+    const memberCajas = cajas.filter(c => c.member_id === parseInt(formData.memberId));
+    if (formData.type === 'Ingreso' || formData.type === 'Gasto') {
+      setFormData(prev => ({ ...prev, cajaId: memberCajas[0]?.id || '' }));
     }
-  }, [formData.cajaId, cajas, formData.type]);
-
+  }, [formData.memberId, formData.type, cajas]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -50,7 +60,7 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas 
 
   const handleTypeChange = (type) => {
     setFormData(prev => ({
-      ...prev,
+      ...getInitialFormState(),
       type,
       category: type === 'Ingreso' ? incomeCategories[0].name : expenseCategories[0].name,
     }));
@@ -70,20 +80,25 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas 
       alert('El miembro de origen y destino no pueden ser el mismo.');
       return;
     }
+    if (formData.type === 'Interna' && formData.fromCajaId === formData.toCajaId) {
+      alert('La caja de origen y destino no pueden ser la misma.');
+      return;
+    }
 
     const transactionDate = new Date(`${formData.date}T${formData.time}`);
-
-    const dataToSave = {
-        ...formData,
-        date: transactionDate,
-    };
-
+    const dataToSave = { ...formData, date: transactionDate };
     onSave(dataToSave);
   };
   
   const categories = formData.type === 'Ingreso' ? incomeCategories : expenseCategories;
   const isTransfer = formData.type === 'Transferencia';
-  const memberSelectDisabled = !isTransfer && !!cajas.find(c => c.id === parseInt(formData.cajaId))?.miembro_id;
+  const isInternalTransfer = formData.type === 'Interna';
+  const isStandardTransaction = formData.type === 'Ingreso' || formData.type === 'Gasto';
+
+  const fromMemberCajas = cajas.filter(c => (c.type === 'Cuenta Bancaria' || c.type === 'Efectivo') && c.member_id === parseInt(formData.fromMemberId));
+  const toMemberCajas = cajas.filter(c => (c.type === 'Cuenta Bancaria' || c.type === 'Efectivo') && c.member_id === parseInt(formData.toMemberId));
+  const bankAccounts = cajas.filter(c => c.type === 'Cuenta Bancaria');
+  const cashBoxes = cajas.filter(c => c.type === 'Efectivo');
 
   return (
     <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-lg">
@@ -92,59 +107,62 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas 
         <div>
             <label htmlFor="amount" className="block text-sm font-medium text-slate-700 mb-1">Monto (PEN)</label>
             <input 
-                type="number" 
-                name="amount" 
-                id="amount" 
-                value={formData.amount} 
-                onChange={handleInputChange} 
+                type="number" name="amount" id="amount" value={formData.amount} onChange={handleInputChange} 
                 className="block w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-center text-lg" 
-                placeholder="0.00" 
-                required 
-                step="0.01" 
+                placeholder="0.00" required step="0.01" 
             />
         </div>
 
         <ToggleSwitch selectedType={formData.type} onChange={handleTypeChange} />
         
-        {!isTransfer && (
+        {isStandardTransaction && (
+          <>
             <CategorySelector
               label={`Categoría de ${formData.type === 'Ingreso' ? 'ingreso' : 'gasto'}`}
               categories={categories}
               selectedCategory={formData.category}
               onSelect={handleCategoryChange}
             />
-        )}
-
-        {isTransfer ? (
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="fromMemberId" className="block text-sm font-medium text-slate-700">De</label>
-              <select name="fromMemberId" id="fromMemberId" value={formData.fromMemberId} onChange={handleInputChange} className="mt-1 block w-full pl-3 pr-10 py-3 text-base border-slate-300 bg-slate-50 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-xl">
-                {members.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="toMemberId" className="block text-sm font-medium text-slate-700">Para</label>
-              <select name="toMemberId" id="toMemberId" value={formData.toMemberId} onChange={handleInputChange} className="mt-1 block w-full pl-3 pr-10 py-3 text-base border-slate-300 bg-slate-50 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-xl">
-                {members.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}
-              </select>
-            </div>
-          </div>
-        ) : (
-          <div>
-            <label htmlFor="memberId" className="block text-sm font-medium text-slate-700">Miembro</label>
-            <select name="fromMemberId" id="memberId" value={formData.fromMemberId} onChange={handleInputChange} disabled={memberSelectDisabled} className={`mt-1 block w-full pl-3 pr-10 py-3 text-base border-slate-300 bg-slate-50 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-xl ${memberSelectDisabled ? 'opacity-70 cursor-not-allowed' : ''}`}>
+            <FormSelect id="memberId" name="memberId" label="Miembro" value={formData.memberId} onChange={handleInputChange}>
               {members.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}
-            </select>
+            </FormSelect>
+            <FormSelect id="cajaId" name="cajaId" label="Caja" value={formData.cajaId} onChange={handleInputChange}>
+               {cajas.filter(c => c.member_id === parseInt(formData.memberId) || c.type === 'Efectivo').map(caja => <option key={caja.id} value={caja.id}>{caja.name}</option>)}
+            </FormSelect>
+          </>
+        )}
+
+        {isTransfer && (
+          <div className="grid grid-cols-2 gap-4">
+            <FormSelect id="fromMemberId" name="fromMemberId" label="De Miembro" value={formData.fromMemberId} onChange={handleInputChange}>
+              {members.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}
+            </FormSelect>
+             <FormSelect id="fromCajaId" name="fromCajaId" label="Desde Caja" value={formData.fromCajaId} onChange={handleInputChange}>
+                <option value="" disabled>Selecciona origen</option>
+                {fromMemberCajas.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </FormSelect>
+            <FormSelect id="toMemberId" name="toMemberId" label="Para Miembro" value={formData.toMemberId} onChange={handleInputChange}>
+              {members.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}
+            </FormSelect>
+             <FormSelect id="toCajaId" name="toCajaId" label="Hacia Caja" value={formData.toCajaId} onChange={handleInputChange}>
+                <option value="" disabled>Selecciona destino</option>
+                {toMemberCajas.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </FormSelect>
           </div>
         )}
 
-        <div>
-            <label htmlFor="cajaId" className="block text-sm font-medium text-slate-700">Caja</label>
-            <select name="cajaId" id="cajaId" value={formData.cajaId} onChange={handleInputChange} className="mt-1 block w-full pl-3 pr-10 py-3 text-base border-slate-300 bg-slate-50 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-xl">
-              {cajas.map(caja => <option key={caja.id} value={caja.id}>{caja.name}</option>)}
-            </select>
-        </div>
+        {isInternalTransfer && (
+          <div className="grid grid-cols-2 gap-4">
+            <FormSelect id="fromCajaId" name="fromCajaId" label="Desde Caja (Banco)" value={formData.fromCajaId} onChange={handleInputChange}>
+              <option value="" disabled>Selecciona origen</option>
+              {bankAccounts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </FormSelect>
+            <FormSelect id="toCajaId" name="toCajaId" label="Hacia Caja (Efectivo)" value={formData.toCajaId} onChange={handleInputChange}>
+              <option value="" disabled>Selecciona destino</option>
+              {cashBoxes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </FormSelect>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
             <div>

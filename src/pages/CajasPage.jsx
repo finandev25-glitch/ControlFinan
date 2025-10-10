@@ -13,7 +13,7 @@ const InfoLine = ({ icon: Icon, label, value }) => (
   </div>
 );
 
-const CajasPage = ({ transactions, cajas, onAddCaja, members }) => {
+const CajasPage = ({ transactions, cajas, onAddCaja, members, onAddTransactions }) => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedCreditCard, setSelectedCreditCard] = useState(null);
@@ -21,18 +21,18 @@ const CajasPage = ({ transactions, cajas, onAddCaja, members }) => {
   const cajasConBalance = useMemo(() => {
     return cajas.map(caja => {
       const income = transactions
-        .filter(t => t.cajaId === caja.id && t.type === 'Ingreso')
-        .reduce((sum, t) => sum + t.amount, 0);
+        .filter(t => t.caja_id === caja.id && t.tipo === 'Ingreso')
+        .reduce((sum, t) => sum + t.monto, 0);
       const expense = transactions
-        .filter(t => t.cajaId === caja.id && t.type === 'Gasto')
-        .reduce((sum, t) => sum + t.amount, 0);
+        .filter(t => t.caja_id === caja.id && t.tipo === 'Gasto')
+        .reduce((sum, t) => sum + t.monto, 0);
       
       let balance = income - expense;
-      if (caja.type === 'Tarjeta de Crédito') {
+      if (caja.type === 'Tarjeta de Crédito' || caja.type === 'Préstamos') {
         balance = expense - income;
       }
       
-      const owner = members.find(m => m.id === caja.memberId);
+      const owner = members.find(m => m.id === caja.member_id);
       return { ...caja, balance, owner };
     });
   }, [transactions, cajas, members]);
@@ -52,21 +52,23 @@ const CajasPage = ({ transactions, cajas, onAddCaja, members }) => {
   return (
     <>
       <div className="p-4 sm:p-6 lg:p-8">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
           <h1 className="text-3xl font-bold text-slate-800">Gestión de Cajas</h1>
-          <button 
-            onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md shadow-sm hover:bg-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-500"
-          >
-            <PlusCircle size={18} />
-            Añadir Caja
-          </button>
+          <div className="flex items-center gap-4 flex-wrap">
+            <button 
+              onClick={() => setIsAddModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md shadow-sm hover:bg-primary-700"
+            >
+              <PlusCircle size={18} />
+              Añadir Caja
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {cajasConBalance.map(caja => {
             const Icon = caja.icon;
-            const progressPercentage = caja.type === 'Préstamos' ? (caja.paidInstallments / caja.totalInstallments) * 100 : 0;
+            const progressPercentage = caja.type === 'Préstamos' ? (caja.paid_installments / caja.total_installments) * 100 : 0;
             const isClickable = caja.type === 'Tarjeta de Crédito';
             return (
               <div 
@@ -96,26 +98,26 @@ const CajasPage = ({ transactions, cajas, onAddCaja, members }) => {
                       <>
                         <InfoLine icon={Landmark} label="Banco" value={caja.bank} />
                         <InfoLine icon={Banknote} label="Moneda" value={caja.currency} />
-                        <InfoLine icon={CreditCard} label="Cuenta" value={caja.accountNumber} />
+                        <InfoLine icon={CreditCard} label="Cuenta" value={caja.account_number} />
                       </>
                     )}
                     {caja.type === 'Tarjeta de Crédito' && (
                       <>
                         <InfoLine icon={Landmark} label="Banco" value={caja.bank} />
-                        <InfoLine icon={Banknote} label="Línea" value={formatCurrency(caja.creditLine)} />
-                        <InfoLine icon={Calendar} label="Día de Cierre" value={caja.closingDay} />
-                        <InfoLine icon={Calendar} label="Día de Pago" value={caja.paymentDueDate} />
+                        <InfoLine icon={Banknote} label="Línea" value={formatCurrency(caja.credit_line)} />
+                        <InfoLine icon={Calendar} label="Día de Cierre" value={caja.closing_day} />
+                        <InfoLine icon={Calendar} label="Día de Pago" value={caja.payment_due_date} />
                       </>
                     )}
                      {caja.type === 'Préstamos' && (
                       <>
                         <InfoLine icon={Landmark} label="Entidad" value={caja.bank} />
-                        <InfoLine icon={University} label="Motivo" value={caja.loanPurpose} />
-                        <InfoLine icon={Banknote} label="Cuota Mensual" value={formatCurrency(caja.monthlyPayment)} />
+                        <InfoLine icon={University} label="Motivo" value={caja.loan_purpose} />
+                        <InfoLine icon={Banknote} label="Cuota Mensual" value={formatCurrency(caja.monthly_payment)} />
                          <div className="pt-2">
                            <div className="flex justify-between text-sm font-medium text-slate-600 mb-1">
                                <span>Progreso del Préstamo</span>
-                               <span>{caja.paidInstallments} / {caja.totalInstallments}</span>
+                               <span>{caja.paid_installments} / {caja.total_installments}</span>
                            </div>
                            <div className="w-full bg-slate-200 rounded-full h-2.5">
                                <div className="bg-primary-600 h-2.5 rounded-full" style={{ width: `${progressPercentage}%` }}></div>
@@ -129,7 +131,7 @@ const CajasPage = ({ transactions, cajas, onAddCaja, members }) => {
                 <div className="mt-auto pt-4 border-t border-slate-100">
                   <p className="text-3xl font-bold text-slate-800">{formatCurrency(caja.balance)}</p>
                   <p className="text-xs text-slate-500">
-                    {caja.type === 'Tarjeta de Crédito' ? 'Deuda acumulada' : 'Balance actual'}
+                    {caja.type === 'Tarjeta de Crédito' || caja.type === 'Préstamos' ? 'Deuda actual' : 'Balance actual'}
                   </p>
                 </div>
               </div>
