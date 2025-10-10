@@ -95,7 +95,7 @@ const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpense
       });
 
     const getCreditCardDebtForCycle = (creditCard) => {
-        const closingDay = creditCard.paymentDay;
+        const closingDay = creditCard.closingDay;
         const cycleEndDate = new Date(selectedYear, selectedMonth, closingDay);
         const cycleStartDate = new Date(cycleEndDate);
         cycleStartDate.setMonth(cycleStartDate.getMonth() - 1);

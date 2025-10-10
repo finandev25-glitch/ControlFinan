@@ -49,9 +49,9 @@ function App() {
     if (newCaja.type === 'Préstamos' && newCaja.monthlyPayment > 0) {
       const newExpense = {
         description: `Cuota de ${newCaja.name}`,
-        amount: parseFloat(newCaja.monthlyPayment),
+        amount: parseFloat(newCaja.monthlyPayment) || 0,
         category: 'Vivienda', // Or a more generic category
-        dayOfMonth: parseInt(newCaja.paymentDay),
+        dayOfMonth: parseInt(newCaja.paymentDay) || 1,
         memberId: newCaja.memberId,
         cajaId: newCajaWithId.id,
         isAutomatic: true,
@@ -62,7 +62,7 @@ function App() {
         description: `Pago de Tarjeta ${newCaja.name}`,
         amount: 0, // Dynamic amount
         category: 'Servicios', // Or a more generic category
-        dayOfMonth: parseInt(newCaja.limitPaymentDay),
+        dayOfMonth: parseInt(newCaja.paymentDueDate) || 1,
         memberId: newCaja.memberId,
         cajaId: newCajaWithId.id,
         isAutomatic: true,
@@ -95,8 +95,8 @@ function App() {
         const creditCard = cajas.find(c => c.id === expense.creditCardId);
         if (creditCard) {
             const today = new Date();
-            const cycleStart = new Date(today.getFullYear(), today.getMonth() -1, creditCard.paymentDay + 1);
-            const cycleEnd = new Date(today.getFullYear(), today.getMonth(), creditCard.paymentDay);
+            const cycleStart = new Date(today.getFullYear(), today.getMonth() -1, creditCard.closingDay + 1);
+            const cycleEnd = new Date(today.getFullYear(), today.getMonth(), creditCard.closingDay);
             
             const cycleTransactions = transactions.filter(t => 
                 t.cajaId === creditCard.id &&

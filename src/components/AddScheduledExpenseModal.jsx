@@ -56,8 +56,8 @@ const AddScheduledExpenseModal = ({ isOpen, onClose, onSave, members, cajas }) =
     e.preventDefault();
     onSave({
       ...formData,
-      amount: parseFloat(formData.amount),
-      dayOfMonth: parseInt(formData.dayOfMonth),
+      amount: parseFloat(formData.amount) || 0,
+      dayOfMonth: parseInt(formData.dayOfMonth) || 1,
       memberId: parseInt(formData.memberId),
       cajaId: parseInt(formData.cajaId),
     });

@@ -82,7 +82,10 @@ const AddCajaModal = ({ isOpen, onClose, onSave, members }) => {
             </FormSelect>
             <FormInput id="cardNumber" name="cardNumber" label="Últimos 4 dígitos" placeholder="1234" maxLength="4" value={formData.cardNumber || ''} onChange={handleInputChange} />
             <FormInput id="creditLine" name="creditLine" label="Línea de Crédito (S/)" type="number" step="100" placeholder="10000" value={formData.creditLine || ''} onChange={handleInputChange} />
-            <FormInput id="paymentDay" name="paymentDay" label="Día de Cierre (del mes)" type="number" min="1" max="31" placeholder="28" value={formData.paymentDay || ''} onChange={handleInputChange} />
+            <div className="grid grid-cols-2 gap-4">
+              <FormInput id="closingDay" name="closingDay" label="Día de Cierre" type="number" min="1" max="31" placeholder="25" value={formData.closingDay || ''} onChange={handleInputChange} />
+              <FormInput id="paymentDueDate" name="paymentDueDate" label="Día de Pago Límite" type="number" min="1" max="31" placeholder="15" value={formData.paymentDueDate || ''} onChange={handleInputChange} />
+            </div>
           </>
         );
       case 'Préstamos':

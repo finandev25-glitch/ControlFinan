@@ -83,7 +83,8 @@ const CajasPage = ({ transactions, cajas, onAddCaja, members }) => {
                       <>
                         <InfoLine icon={Landmark} label="Banco" value={caja.bank} />
                         <InfoLine icon={Banknote} label="Línea" value={formatCurrency(caja.creditLine)} />
-                        <InfoLine icon={Calendar} label="Día de Cierre" value={caja.paymentDay} />
+                        <InfoLine icon={Calendar} label="Día de Cierre" value={caja.closingDay} />
+                        <InfoLine icon={Calendar} label="Día de Pago" value={caja.paymentDueDate} />
                       </>
                     )}
                      {caja.type === 'Préstamos' && (

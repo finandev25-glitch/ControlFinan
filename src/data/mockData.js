@@ -70,7 +70,8 @@ export const cajas = [
       bank: 'Interbank',
       cardNumber: '**** **** **** 5678',
       creditLine: 15000,
-      paymentDay: 25, // Renombrado a día de cierre
+      closingDay: 25,
+      paymentDueDate: 15,
       memberId: 1,
     },
     { 
@@ -121,11 +122,11 @@ const transactionTypes = ['Ingreso', 'Gasto'];
 export const transactions = Array.from({ length: 250 }, (_, i) => {
   const contributingMembers = members.filter(m => m.role !== 'Dependiente');
   const member = faker.helpers.arrayElement(contributingMembers);
-  const type = faker.helpers.arrayElement(transactionTypes);
   
   const memberCajas = cajas.filter(c => c.memberId === member.id || c.type === 'Efectivo');
   const caja = faker.helpers.arrayElement(memberCajas.length > 0 ? memberCajas : cajas);
   
+  const type = faker.helpers.arrayElement(transactionTypes);
   let amount;
   let category;
   let description;
