@@ -15,12 +15,15 @@ import * as Icons from 'lucide-react';
 
 const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
-const AdvancedReportsPage = ({ transactions, members, incomeCategories, expenseCategories, categoryIconMap, selectedYear, selectedMonth, onYearChange, onMonthChange }) => {
+const AdvancedReportsPage = ({ transactions, members, categories, selectedYear, selectedMonth, onYearChange, onMonthChange }) => {
   const [selectedMemberId, setSelectedMemberId] = useState('all');
   const [selectedCategoryId, setSelectedCategoryId] = useState('all');
-  const [timelineCategory, setTimelineCategory] = useState(expenseCategories[0]?.name || 'all');
+  const [timelineCategory, setTimelineCategory] = useState(categories.find(c => c.type === 'Gasto')?.name || 'all');
   const [timelineInterval, setTimelineInterval] = useState('Diario');
   const [modalData, setModalData] = useState({ isOpen: false, title: '', transactions: [] });
+
+  const incomeCategories = useMemo(() => categories.filter(c => c.type === 'Ingreso'), [categories]);
+  const expenseCategories = useMemo(() => categories.filter(c => c.type === 'Gasto'), [categories]);
 
   const { currentMonthStats, previousMonthStats } = useMemo(() => {
     const selectedDate = new Date(selectedYear, selectedMonth);
@@ -58,7 +61,7 @@ const AdvancedReportsPage = ({ transactions, members, incomeCategories, expenseC
 
   const memberFilteredExpenses = useMemo(() => {
     const filtered = transactions.filter(t => {
-      const memberMatch = selectedMemberId === 'all' || t.member_id === parseInt(selectedMemberId);
+      const memberMatch = selectedMemberId === 'all' || String(t.member_id) === String(selectedMemberId);
       return t.type === 'Gasto' && t.category && memberMatch;
     });
 
@@ -163,7 +166,7 @@ const AdvancedReportsPage = ({ transactions, members, incomeCategories, expenseC
 
     const calculateStatsForPeriod = (memberId, start, end) => {
         const memberTransactions = transactions.filter(t => 
-            t.member_id === memberId && 
+            String(t.member_id) === String(memberId) && 
             new Date(t.date) >= start && 
             new Date(t.date) <= end
         );

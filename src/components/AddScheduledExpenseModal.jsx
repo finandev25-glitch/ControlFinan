@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { X } from 'lucide-react';
 import CategorySelector from './CategorySelector';
 import * as Icons from 'lucide-react';
@@ -30,16 +30,49 @@ const FormSelect = ({ id, label, children, ...props }) => (
 );
 
 const AddScheduledExpenseModal = ({ isOpen, onClose, onSave, members, cajas, expenseCategories, categoryIconMap }) => {
-  const getInitialState = () => ({
-    description: '',
-    amount: '',
-    category: expenseCategories[0]?.name || '',
-    day_of_month: '15',
-    member_id: members[0]?.id || '',
-    caja_id: cajas[0]?.id || '',
-  });
+  const getInitialState = () => {
+    const initialMemberId = members[0]?.id || '';
+    const initialCajas = cajas.filter(c => String(c.member_id) === String(initialMemberId) || c.member_id === null);
+    return {
+      description: '',
+      amount: '',
+      category: expenseCategories[0]?.name || '',
+      day_of_month: '15',
+      member_id: initialMemberId,
+      caja_id: initialCajas[0]?.id || '',
+    };
+  };
 
   const [formData, setFormData] = useState(getInitialState());
+
+  const availableCajas = useMemo(() => {
+    if (!formData.member_id) return [];
+    return cajas.filter(c => String(c.member_id) === String(formData.member_id) || c.member_id === null);
+  }, [formData.member_id, cajas]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setFormData(getInitialState());
+    }
+  }, [isOpen]);
+  
+  useEffect(() => {
+    const isCurrentCajaValid = availableCajas.some(c => c.id === formData.caja_id);
+    if (!isCurrentCajaValid && availableCajas.length > 0) {
+      setFormData(prev => ({ ...prev, caja_id: availableCajas[0].id }));
+    } else if (availableCajas.length === 0) {
+      setFormData(prev => ({ ...prev, caja_id: '' }));
+    }
+  }, [formData.member_id, availableCajas]);
+
+
+  const categoriesWithIcons = useMemo(() => {
+    if (!expenseCategories || !categoryIconMap) return [];
+    return expenseCategories.map(cat => ({
+      ...cat,
+      icon: categoryIconMap[cat.name] || Icons.Tag,
+    }));
+  }, [expenseCategories, categoryIconMap]);
 
   if (!isOpen) return null;
 
@@ -59,16 +92,10 @@ const AddScheduledExpenseModal = ({ isOpen, onClose, onSave, members, cajas, exp
       amount: parseFloat(formData.amount) || 0,
       day_of_month: parseInt(formData.day_of_month) || 1,
       member_id: formData.member_id,
-      caja_id: parseInt(formData.caja_id),
+      caja_id: formData.caja_id,
     });
     onClose();
-    setFormData(getInitialState());
   };
-
-  const categoriesWithIcons = expenseCategories.map(cat => ({
-    ...cat,
-    icon: categoryIconMap[cat.name] || Icons.Tag,
-  }));
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 z-40 flex justify-center items-center p-4 backdrop-blur-sm" onClick={onClose}>
@@ -95,8 +122,12 @@ const AddScheduledExpenseModal = ({ isOpen, onClose, onSave, members, cajas, exp
                 <FormSelect id="memberId" name="member_id" label="Miembro Responsable" value={formData.member_id} onChange={handleInputChange}>
                     {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                 </FormSelect>
-                <FormSelect id="cajaId" name="caja_id" label="Caja de Origen" value={formData.caja_id} onChange={handleInputChange}>
-                    {cajas.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                <FormSelect id="cajaId" name="caja_id" label="Caja de Origen" value={formData.caja_id} onChange={handleInputChange} disabled={availableCajas.length === 0}>
+                    {availableCajas.length > 0 ? (
+                      availableCajas.map(c => <option key={c.id} value={c.id}>{c.name}</option>)
+                    ) : (
+                      <option value="" disabled>Sin cajas para este miembro</option>
+                    )}
                 </FormSelect>
             </div>
 
@@ -110,7 +141,7 @@ const AddScheduledExpenseModal = ({ isOpen, onClose, onSave, members, cajas, exp
             </button>
             <button 
               type="submit" 
-              className="px-6 py-2.5 text-sm font-semibold text-white bg-primary-600 border border-transparent rounded-full shadow-sm hover:bg-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-500"
+              className="px-6 py-2.5 text-sm font-semibold text-white bg-primary-600 border border-transparent rounded-full shadow-sm hover:bg-primary-700"
             >
               Guardar Gasto
             </button>

@@ -26,9 +26,9 @@ const ReportsPage = ({ transactions, cajas, members, categories }) => {
     return transactions.filter(t => {
       const searchMatch = t.description.toLowerCase().includes(searchTerm.toLowerCase());
       const typeMatch = filterType === 'Todos' || t.type === filterType;
-      const memberMatch = filterMember === 'Todos' || t.member_id === parseInt(filterMember);
+      const memberMatch = filterMember === 'Todos' || String(t.member_id) === String(filterMember);
       const categoryMatch = filterCategory === 'Todos' || t.category === filterCategory;
-      const cajaMatch = filterCaja === 'Todos' || t.caja_id === parseInt(filterCaja);
+      const cajaMatch = filterCaja === 'Todos' || String(t.caja_id) === String(filterCaja);
       return searchMatch && typeMatch && memberMatch && categoryMatch && cajaMatch;
     });
   }, [transactions, searchTerm, filterType, filterMember, filterCategory, filterCaja]);

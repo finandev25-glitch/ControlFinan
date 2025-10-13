@@ -3,11 +3,12 @@ import { Target } from 'lucide-react';
 
 const formatCurrency = (amount) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(amount);
 
-const BudgetCard = ({ budget }) => {
-  const { category, limit, spent, icon: Icon = Target } = budget;
+const BudgetCard = ({ budget, categoryIconMap }) => {
+  const { category, limit_amount: limit, spent } = budget;
   
   const remaining = limit - spent;
   const progress = limit > 0 ? (spent / limit) * 100 : 0;
+  const Icon = categoryIconMap[category] || Target;
 
   let progressBarColor = 'bg-green-500';
   if (progress > 85) {

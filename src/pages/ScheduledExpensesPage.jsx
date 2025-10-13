@@ -29,14 +29,23 @@ const ScheduledExpensesPage = ({
   members, 
   cajas,
   transactions,
-  expenseCategories,
-  categoryIconMap,
+  categories,
   selectedYear,
   selectedMonth,
   onYearChange,
   onMonthChange
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const expenseCategories = useMemo(() => categories.filter(c => c.type === 'Gasto'), [categories]);
+
+  const categoryIconMap = useMemo(() => {
+    return categories.reduce((acc, cat) => {
+      const IconComponent = Icons[cat.icon_name] || Icons.Tag;
+      acc[cat.name] = IconComponent;
+      return acc;
+    }, {});
+  }, [categories]);
 
   const monthlyProjectedExpenses = useMemo(() => {
     return scheduledExpenses.map(exp => {

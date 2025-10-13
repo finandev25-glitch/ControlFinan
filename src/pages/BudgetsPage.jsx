@@ -1,13 +1,23 @@
 import React, { useState, useMemo } from 'react';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Tag } from 'lucide-react';
 import BudgetCard from '../components/BudgetCard';
 import AddBudgetModal from '../components/AddBudgetModal';
 import PeriodSelector from '../components/PeriodSelector';
 import { startOfMonth, endOfMonth } from 'date-fns';
 import * as Icons from 'lucide-react';
 
-const BudgetsPage = ({ budgets, transactions, onSaveBudget, expenseCategories, categoryIconMap, selectedYear, selectedMonth, onYearChange, onMonthChange }) => {
+const BudgetsPage = ({ budgets, transactions, onSaveBudget, categories, selectedYear, selectedMonth, onYearChange, onMonthChange }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const expenseCategories = useMemo(() => categories.filter(c => c.type === 'Gasto'), [categories]);
+
+  const categoryIconMap = useMemo(() => {
+    return categories.reduce((acc, cat) => {
+      const IconComponent = Icons[cat.icon_name] || Icons.Tag;
+      acc[cat.name] = IconComponent;
+      return acc;
+    }, {});
+  }, [categories]);
 
   const budgetsWithSpending = useMemo(() => {
     const selectedDate = new Date(selectedYear, selectedMonth);
@@ -24,15 +34,9 @@ const BudgetsPage = ({ budgets, transactions, onSaveBudget, expenseCategories, c
         .filter(t => t.type === 'Gasto' && t.category === budget.category)
         .reduce((sum, t) => sum + t.amount, 0);
       
-      const Icon = categoryIconMap[budget.category] || Icons.Tag;
-
-      return {
-        ...budget,
-        spent,
-        icon: Icon,
-      };
+      return { ...budget, spent };
     });
-  }, [budgets, transactions, selectedYear, selectedMonth, categoryIconMap]);
+  }, [budgets, transactions, selectedYear, selectedMonth]);
 
   return (
     <>
@@ -56,7 +60,7 @@ const BudgetsPage = ({ budgets, transactions, onSaveBudget, expenseCategories, c
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {budgetsWithSpending.map(budget => (
-            <BudgetCard key={budget.category} budget={budget} />
+            <BudgetCard key={budget.category} budget={budget} categoryIconMap={categoryIconMap} />
           ))}
            {budgets.length === 0 && (
             <div className="md:col-span-2 xl:col-span-3 text-center py-16 rounded-lg bg-slate-50 border-2 border-dashed border-slate-200">
@@ -72,6 +76,7 @@ const BudgetsPage = ({ budgets, transactions, onSaveBudget, expenseCategories, c
         onSave={onSaveBudget}
         existingBudgets={budgets}
         expenseCategories={expenseCategories}
+        categoryIconMap={categoryIconMap}
       />
     </>
   );

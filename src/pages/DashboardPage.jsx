@@ -7,12 +7,21 @@ import RecentTransactionsList from '../components/RecentTransactionsList';
 import BalanceSummaryCard from '../components/BalanceSummaryCard';
 import ProjectedBalanceCard from '../components/ProjectedBalanceCard';
 import ProjectedExpensesModal from '../components/ProjectedExpensesModal';
-import { Users } from 'lucide-react';
+import { Users, Tag } from 'lucide-react';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
+import * as Icons from 'lucide-react';
 
-const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpenses, categoryIconMap, selectedYear, selectedMonth, onYearChange, onMonthChange }) => {
+const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpenses, categories, selectedYear, selectedMonth, onYearChange, onMonthChange }) => {
   const [selectedMemberId, setSelectedMemberId] = useState('all');
   const [isProjectedExpensesModalOpen, setProjectedExpensesModalOpen] = useState(false);
+
+  const categoryIconMap = useMemo(() => {
+    return categories.reduce((acc, cat) => {
+      const IconComponent = Icons[cat.icon_name] || Tag;
+      acc[cat.name] = IconComponent;
+      return acc;
+    }, {});
+  }, [categories]);
 
   const {
     summary,
@@ -31,7 +40,7 @@ const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpense
     const filterTransactions = (txs, from, to, memberId) => {
       return txs.filter(t => {
         const transactionDate = new Date(t.date);
-        const memberMatch = memberId === 'all' || t.member_id === memberId;
+        const memberMatch = memberId === 'all' || String(t.member_id) === String(memberId);
         return transactionDate >= from && transactionDate <= to && memberMatch;
       });
     };
@@ -75,12 +84,12 @@ const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpense
         memberAvatar: members.find(m => m.id === t.member_id)?.avatar,
     }));
 
-    const totalBudgetLimit = budgets.reduce((sum, b) => sum + b.limit, 0);
+    const totalBudgetLimit = budgets.reduce((sum, b) => sum + b.limit_amount, 0);
     const budgetsWithSpending = budgets.map(budget => {
       const spent = currentTransactions
         .filter(t => t.type === 'Gasto' && t.category === budget.category)
         .reduce((sum, t) => sum + t.amount, 0);
-      const Icon = categoryIconMap[budget.category];
+      const Icon = categoryIconMap[budget.category] || Icons.Tag;
       return { ...budget, spent, icon: Icon };
     });
     const totalSpentOnBudgetCategories = budgetsWithSpending.reduce((sum, b) => sum + b.spent, 0);
@@ -89,7 +98,7 @@ const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpense
     const pendingScheduledExpenses = scheduledExpenses
       .filter(exp => {
         const isConfirmed = exp.confirmed_months?.includes(periodKey);
-        const memberMatch = selectedMemberId === 'all' || exp.member_id === selectedMemberId;
+        const memberMatch = selectedMemberId === 'all' || String(exp.member_id) === String(selectedMemberId);
         return !isConfirmed && memberMatch;
       });
 
@@ -141,7 +150,7 @@ const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpense
         details: projectedExpensesWithDetails,
       },
     };
-  }, [transactions, scheduledExpenses, selectedYear, selectedMonth, selectedMemberId, members, budgets, cajas, categoryIconMap]);
+  }, [transactions, scheduledExpenses, selectedYear, selectedMonth, selectedMemberId, members, budgets, cajas, categories, categoryIconMap]);
 
   return (
     <>
@@ -160,7 +169,7 @@ const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpense
                       id="memberFilter"
                       className="block w-full rounded-md border-slate-300 pl-10 py-2 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
                       value={selectedMemberId}
-                      onChange={(e) => setSelectedMemberId(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
+                      onChange={(e) => setSelectedMemberId(e.target.value)}
                   >
                       <option value="all">Todos los Miembros</option>
                       {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}

@@ -63,7 +63,7 @@ const AddCategoryModal = ({ isOpen, onClose, onSave }) => {
           
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">Seleccionar Ícono</label>
-            <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-2 max-h-48 overflow-y-auto p-2 bg-slate-50 rounded-lg border">
+            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-7 gap-3 max-h-48 overflow-y-auto p-2 bg-slate-50 rounded-lg border">
               {availableIcons.map(iconKey => {
                 const Icon = Icons[iconKey];
                 const isSelected = iconName === iconKey;
@@ -72,10 +72,10 @@ const AddCategoryModal = ({ isOpen, onClose, onSave }) => {
                     key={iconKey}
                     type="button"
                     onClick={() => setIconName(iconKey)}
-                    className={`relative flex items-center justify-center p-3 rounded-lg transition-all duration-200 ${isSelected ? 'bg-primary-100 ring-2 ring-primary-500' : 'bg-white hover:bg-slate-100'}`}
+                    className={`relative flex items-center justify-center p-4 rounded-lg transition-all duration-200 ${isSelected ? 'bg-primary-100 ring-2 ring-primary-500' : 'bg-white hover:bg-slate-100'}`}
                   >
-                    <Icon className="h-6 w-6 text-slate-600" />
-                    {isSelected && <Check size={14} className="absolute bottom-1 right-1 text-primary-600" />}
+                    <Icon className="h-8 w-8 text-slate-600" />
+                    {isSelected && <div className="absolute bottom-1 right-1 bg-primary-600 rounded-full p-0.5"><Check size={12} className="text-white" /></div>}
                   </button>
                 );
               })}

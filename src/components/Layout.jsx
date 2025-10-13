@@ -3,7 +3,7 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import { Menu } from 'lucide-react';
 
-const Layout = ({ children, pendingExpenses, onReviewExpense, members, cajas }) => {
+const Layout = ({ children, pendingExpenses, onReviewExpense, members, cajas, categories }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -17,6 +17,7 @@ const Layout = ({ children, pendingExpenses, onReviewExpense, members, cajas }) 
           onReviewExpense={onReviewExpense}
           members={members}
           cajas={cajas}
+          categories={categories}
         />
         
         <main className="flex-1 overflow-x-hidden overflow-y-auto">

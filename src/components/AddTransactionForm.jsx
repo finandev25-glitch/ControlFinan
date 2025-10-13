@@ -22,14 +22,14 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas,
   const getInitialFormState = () => {
     const now = new Date();
     const initialMemberId = selectedMemberId || members[0]?.id || '';
-    const availableCajas = cajas.filter(c => c.member_id === initialMemberId || c.member_id === null);
+    const availableCajas = cajas.filter(c => String(c.member_id) === String(initialMemberId) || c.member_id === null);
     return {
       description: '',
       amount: '',
       type: 'Ingreso',
       memberId: initialMemberId,
       fromMemberId: initialMemberId,
-      toMemberId: members.find(m => m.id !== initialMemberId)?.id || '',
+      toMemberId: members.find(m => String(m.id) !== String(initialMemberId))?.id || '',
       fromCajaId: '',
       toCajaId: '',
       cajaId: availableCajas[0]?.id || '',
@@ -89,15 +89,15 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas,
 
   const fromMemberCajas = cajas.filter(c => 
     (c.type === 'Cuenta Bancaria' || c.type === 'Efectivo') && 
-    (c.member_id === formData.fromMemberId || c.member_id === null)
+    (String(c.member_id) === String(formData.fromMemberId) || c.member_id === null)
   );
   const toMemberCajas = cajas.filter(c => 
     (c.type === 'Cuenta Bancaria' || c.type === 'Efectivo') && 
-    (c.member_id === formData.toMemberId || c.member_id === null)
+    (String(c.member_id) === String(formData.toMemberId) || c.member_id === null)
   );
   const bankAccounts = cajas.filter(c => c.type === 'Cuenta Bancaria');
   const cashBoxes = cajas.filter(c => c.type === 'Efectivo');
-  const standardCajas = cajas.filter(c => c.member_id === formData.memberId || c.member_id === null);
+  const standardCajas = cajas.filter(c => String(c.member_id) === String(formData.memberId) || c.member_id === null);
 
   const categoriesWithIcons = categoriesForSelector.map(cat => ({
     ...cat,

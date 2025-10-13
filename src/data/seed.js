@@ -69,9 +69,9 @@ export const cajas = [
 ];
 
 export const budgets = [
-  { category: 'Alimentación', limit: 1500 },
-  { category: 'Transporte', limit: 400 },
-  { category: 'Ocio', limit: 600 },
+  { category: 'Alimentación', limit_amount: 1500 },
+  { category: 'Transporte', limit_amount: 400 },
+  { category: 'Ocio', limit_amount: 600 },
 ];
 
 export const scheduledExpenses = [

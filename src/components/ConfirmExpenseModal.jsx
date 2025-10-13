@@ -60,7 +60,7 @@ const ConfirmExpenseModal = ({ isOpen, onClose, onConfirm, expense, members, caj
         ...formData,
         amount: parseFloat(formData.amount),
         memberId: formData.memberId,
-        cajaId: parseInt(formData.cajaId),
+        cajaId: formData.cajaId,
         date: new Date(formData.date),
     };
     onConfirm(finalData, expense.id);

@@ -12,10 +12,9 @@ import ScheduledExpensesPage from './pages/ScheduledExpensesPage';
 import SettingsPage from './pages/SettingsPage';
 import ConfirmExpenseModal from './components/ConfirmExpenseModal';
 import { supabase } from './supabaseClient';
-import { Wallet, Landmark, CreditCard, University, LoaderCircle, Tag } from 'lucide-react';
+import { Wallet, Landmark, CreditCard, University, LoaderCircle } from 'lucide-react';
 import { format, isWithinInterval, addDays, startOfDay } from 'date-fns';
 import { faker } from '@faker-js/faker';
-import * as Icons from 'lucide-react';
 
 const cajaIconMap = {
   'Efectivo': Wallet,
@@ -35,14 +34,6 @@ function App() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [expenseToConfirm, setExpenseToConfirm] = useState(null);
-
-  const categoryIconMap = useMemo(() => {
-    return categories.reduce((acc, cat) => {
-      const IconComponent = Icons[cat.icon_name] || Tag;
-      acc[cat.name] = IconComponent;
-      return acc;
-    }, {});
-  }, [categories]);
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -411,9 +402,6 @@ function App() {
     );
   }
 
-  const incomeCategories = categories.filter(c => c.type === 'Ingreso');
-  const expenseCategories = categories.filter(c => c.type === 'Gasto');
-
   return (
     <Router>
       <Layout 
@@ -421,6 +409,7 @@ function App() {
         onReviewExpense={handleOpenConfirmModal}
         members={members}
         cajas={cajas}
+        categories={categories}
       >
         <Routes>
           <Route 
@@ -432,14 +421,14 @@ function App() {
                 budgets={budgets} 
                 cajas={cajas}
                 scheduledExpenses={scheduledExpenses}
-                categoryIconMap={categoryIconMap}
+                categories={categories}
                 {...periodProps} 
               />
             } 
           />
           <Route 
             path="/miembros" 
-            element={<MembersPage transactions={transactions} onAddTransactions={handleAddTransactions} cajas={cajas} members={members} onAddMember={handleAddMember} onDeleteMember={handleDeleteMember} incomeCategories={incomeCategories} expenseCategories={expenseCategories} categoryIconMap={categoryIconMap} />} 
+            element={<MembersPage transactions={transactions} onAddTransactions={handleAddTransactions} cajas={cajas} members={members} onAddMember={handleAddMember} onDeleteMember={handleDeleteMember} categories={categories} />} 
           />
           <Route 
             path="/cajas" 
@@ -455,11 +444,11 @@ function App() {
           />
            <Route 
             path="/analisis" 
-            element={<AdvancedReportsPage transactions={transactions} members={members} incomeCategories={incomeCategories} expenseCategories={expenseCategories} categoryIconMap={categoryIconMap} {...periodProps} />} 
+            element={<AdvancedReportsPage transactions={transactions} members={members} categories={categories} {...periodProps} />} 
           />
           <Route 
             path="/presupuesto" 
-            element={<BudgetsPage budgets={budgets} transactions={transactions} onSaveBudget={handleSaveBudget} expenseCategories={expenseCategories} categoryIconMap={categoryIconMap} {...periodProps} />} 
+            element={<BudgetsPage budgets={budgets} transactions={transactions} onSaveBudget={handleSaveBudget} categories={categories} {...periodProps} />} 
           />
           <Route
             path="/gastos-programados"
@@ -470,8 +459,7 @@ function App() {
                 members={members}
                 cajas={cajas}
                 transactions={transactions}
-                expenseCategories={expenseCategories}
-                categoryIconMap={categoryIconMap}
+                categories={categories}
                 {...periodProps}
               />
             }

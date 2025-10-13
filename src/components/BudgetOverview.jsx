@@ -43,7 +43,7 @@ const BudgetOverview = ({ data }) => {
 
             <div className="space-y-4">
                 {budgetsWithSpending.map(budget => {
-                    const { category, limit, spent, icon: Icon = Target } = budget;
+                    const { category, limit_amount: limit, spent, icon: Icon = Target } = budget;
                     const progress = limit > 0 ? (spent / limit) * 100 : 0;
                     const color = getProgressBarColor(progress);
                     

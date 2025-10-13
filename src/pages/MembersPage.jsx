@@ -1,18 +1,30 @@
 import React, { useState, useMemo } from 'react';
 import AddTransactionForm from '../components/AddTransactionForm';
 import TransactionCard from '../components/TransactionCard';
-import { Filter, PlusCircle, Trash2 } from 'lucide-react';
+import { Filter, PlusCircle, Trash2, Tag } from 'lucide-react';
 import AddMemberModal from '../components/AddMemberModal';
 import DeleteMemberModal from '../components/DeleteMemberModal';
+import * as Icons from 'lucide-react';
 
 const formatCurrency = (amount) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(amount);
 
-const MembersPage = ({ transactions, onAddTransactions, cajas, members, onAddMember, onDeleteMember, incomeCategories, expenseCategories, categoryIconMap }) => {
+const MembersPage = ({ transactions, onAddTransactions, cajas, members, onAddMember, onDeleteMember, categories }) => {
   const [selectedMemberId, setSelectedMemberId] = useState(members[0]?.id);
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [memberToDelete, setMemberToDelete] = useState(null);
+
+  const incomeCategories = useMemo(() => categories.filter(c => c.type === 'Ingreso'), [categories]);
+  const expenseCategories = useMemo(() => categories.filter(c => c.type === 'Gasto'), [categories]);
+
+  const categoryIconMap = useMemo(() => {
+    return categories.reduce((acc, cat) => {
+      const IconComponent = Icons[cat.icon_name] || Tag;
+      acc[cat.name] = IconComponent;
+      return acc;
+    }, {});
+  }, [categories]);
 
   const memberSummary = useMemo(() => {
     return members.map(member => {
@@ -25,7 +37,7 @@ const MembersPage = ({ transactions, onAddTransactions, cajas, members, onAddMem
   const selectedMemberTransactions = useMemo(() => {
     if (!selectedMemberId) return [];
     return transactions
-      .filter(t => t.member_id === selectedMemberId)
+      .filter(t => String(t.member_id) === String(selectedMemberId))
       .map(t => {
         const member = members.find(m => m.id === t.member_id);
         return { ...t, memberAvatar: member?.avatar };
@@ -37,14 +49,14 @@ const MembersPage = ({ transactions, onAddTransactions, cajas, members, onAddMem
     const amount = parseFloat(data.amount);
 
     if (data.type === 'Transferencia') {
-        const fromCaja = cajas.find(c => c.id === parseInt(data.fromCajaId));
-        const toCaja = cajas.find(c => c.id === parseInt(data.toCajaId));
+        const fromCaja = cajas.find(c => String(c.id) === String(data.fromCajaId));
+        const toCaja = cajas.find(c => String(c.id) === String(data.toCajaId));
         
         const expenseTx = {
             date: transactionDate,
             description: data.description || `Transferencia a ${toCaja.name}`,
             memberId: data.fromMemberId,
-            cajaId: fromCaja.id,
+            cajaId: data.fromCajaId,
             type: 'Gasto',
             category: 'Transferencia',
             amount: amount,
@@ -54,7 +66,7 @@ const MembersPage = ({ transactions, onAddTransactions, cajas, members, onAddMem
             date: transactionDate,
             description: data.description || `Transferencia de ${fromCaja.name}`,
             memberId: data.toMemberId,
-            cajaId: toCaja.id,
+            cajaId: data.toCajaId,
             type: 'Ingreso',
             category: 'Transferencia',
             amount: amount,
@@ -62,14 +74,14 @@ const MembersPage = ({ transactions, onAddTransactions, cajas, members, onAddMem
         onAddTransactions([expenseTx, incomeTx]);
 
     } else if (data.type === 'Interna') {
-        const fromCaja = cajas.find(c => c.id === parseInt(data.fromCajaId));
-        const toCaja = cajas.find(c => c.id === parseInt(data.toCajaId));
+        const fromCaja = cajas.find(c => String(c.id) === String(data.fromCajaId));
+        const toCaja = cajas.find(c => String(c.id) === String(data.toCajaId));
         
         const expenseTx = {
             date: transactionDate,
             description: data.description || `Retiro a ${toCaja.name}`,
             memberId: fromCaja.member_id,
-            cajaId: fromCaja.id,
+            cajaId: data.fromCajaId,
             type: 'Gasto',
             category: 'Transferencia Interna',
             amount: amount,
@@ -79,7 +91,7 @@ const MembersPage = ({ transactions, onAddTransactions, cajas, members, onAddMem
             date: transactionDate,
             description: data.description || `Depósito desde ${fromCaja.name}`,
             memberId: toCaja.member_id,
-            cajaId: toCaja.id,
+            cajaId: data.toCajaId,
             type: 'Ingreso',
             category: 'Transferencia Interna',
             amount: amount,
@@ -91,7 +103,7 @@ const MembersPage = ({ transactions, onAddTransactions, cajas, members, onAddMem
         date: transactionDate,
         description: data.description,
         memberId: data.memberId,
-        cajaId: parseInt(data.cajaId),
+        cajaId: data.cajaId,
         type: data.type,
         amount: amount,
         category: data.category,
@@ -144,7 +156,7 @@ const MembersPage = ({ transactions, onAddTransactions, cajas, members, onAddMem
               {memberSummary.map(member => (
                 <div 
                   key={member.id} 
-                  className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all duration-200 ${selectedMemberId === member.id ? 'bg-primary-100 ring-2 ring-primary-500' : 'hover:bg-gray-100'}`}
+                  className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all duration-200 ${String(selectedMemberId) === String(member.id) ? 'bg-primary-100 ring-2 ring-primary-500' : 'hover:bg-gray-100'}`}
                   onClick={() => setSelectedMemberId(member.id)}
                 >
                   <div className="flex items-center gap-4">
@@ -190,7 +202,7 @@ const MembersPage = ({ transactions, onAddTransactions, cajas, members, onAddMem
               <div>
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-lg font-semibold">
-                    Transacciones de {members.find(m => m.id === selectedMemberId)?.name || ''}
+                    Transacciones de {members.find(m => String(m.id) === String(selectedMemberId))?.name || ''}
                   </h2>
                   <button
                     onClick={() => setIsFormVisible(true)}

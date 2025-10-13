@@ -1,13 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { X } from 'lucide-react';
+import CategorySelector from './CategorySelector';
+import * as Icons from 'lucide-react';
 
-const AddBudgetModal = ({ isOpen, onClose, onSave, existingBudgets, expenseCategories }) => {
-  const availableCategories = expenseCategories.filter(
-    cat => !existingBudgets.some(b => b.category === cat.name)
+const AddBudgetModal = ({ isOpen, onClose, onSave, existingBudgets, expenseCategories, categoryIconMap }) => {
+  const availableCategories = useMemo(() => 
+    expenseCategories.filter(
+      cat => !existingBudgets.some(b => b.category === cat.name)
+    ), 
+    [expenseCategories, existingBudgets]
   );
 
   const [category, setCategory] = useState(availableCategories[0]?.name || '');
   const [limit, setLimit] = useState('');
+
+  const categoriesWithIcons = useMemo(() => {
+    if (!availableCategories || !categoryIconMap) return [];
+    return availableCategories.map(cat => ({
+      ...cat,
+      icon: categoryIconMap[cat.name] || Icons.Tag,
+    }));
+  }, [availableCategories, categoryIconMap]);
 
   if (!isOpen) return null;
 
@@ -17,7 +30,7 @@ const AddBudgetModal = ({ isOpen, onClose, onSave, existingBudgets, expenseCateg
       alert('Por favor, selecciona una categoría y un límite válido.');
       return;
     }
-    onSave({ category, limit: parseFloat(limit) });
+    onSave({ category, limit_amount: parseFloat(limit) });
     onClose();
     setCategory(availableCategories[0]?.name || '');
     setLimit('');
@@ -34,17 +47,12 @@ const AddBudgetModal = ({ isOpen, onClose, onSave, existingBudgets, expenseCateg
         
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="category" className="block text-sm font-medium text-slate-700 mb-1">Categoría</label>
-            <select
-              id="category"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="block w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-              required
-            >
-              <option value="" disabled>Selecciona una categoría</option>
-              {availableCategories.map(cat => <option key={cat.name} value={cat.name}>{cat.name}</option>)}
-            </select>
+            <CategorySelector
+              label="Categoría"
+              categories={categoriesWithIcons}
+              selectedCategory={category}
+              onSelect={setCategory}
+            />
              {availableCategories.length === 0 && (
                 <p className="text-xs text-slate-500 mt-2">Ya has creado presupuestos para todas las categorías disponibles.</p>
              )}
