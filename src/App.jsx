@@ -308,8 +308,9 @@ function App() {
       const newlyAddedMember = data[0];
       setMembers(prev => [...prev, newlyAddedMember]);
 
+      const firstName = newlyAddedMember.name.split(' ')[0];
       const newCashBox = {
-          name: `Efectivo ${newlyAddedMember.name}`,
+          name: `Efectivo ${firstName}`,
           type: 'Efectivo',
           member_id: newlyAddedMember.id,
       };

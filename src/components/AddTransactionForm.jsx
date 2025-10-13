@@ -1,41 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import ToggleSwitch from './ToggleSwitch';
 import CategorySelector from './CategorySelector';
-import { CalendarDays, Clock } from 'lucide-react';
+import { CalendarDays, Clock, Wallet } from 'lucide-react';
 import { format } from 'date-fns';
 import { faker } from '@faker-js/faker';
-
-const FormSelect = ({ id, label, children, ...props }) => (
-    <div>
-        <label htmlFor={id} className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
-        <select
-            id={id}
-            {...props}
-            className="block w-full px-3 py-3 text-base border-slate-300 bg-slate-50 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-xl"
-            required
-        >
-            {children}
-        </select>
-    </div>
-);
+import SelectCajaModal from './SelectCajaModal';
 
 const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas, incomeCategories, expenseCategories, categoryIconMap, transactionToEdit, transactions }) => {
   const isEditing = !!transactionToEdit;
+  const [isCajaModalOpen, setIsCajaModalOpen] = useState(false);
+  const [cajaSelectionContext, setCajaSelectionContext] = useState(null); // 'from', 'to', or 'standard'
 
   const getNewFormState = () => {
     const now = new Date();
-    const initialMemberId = selectedMemberId || members[0]?.id || '';
-    const availableCajas = cajas.filter(c => String(c.member_id) === String(initialMemberId) || c.member_id === null);
     return {
       description: '',
       amount: '',
       type: 'Ingreso',
-      memberId: initialMemberId,
-      fromMemberId: initialMemberId,
-      toMemberId: members.find(m => String(m.id) !== String(initialMemberId))?.id || '',
+      memberId: '',
+      fromMemberId: '',
+      toMemberId: '',
       fromCajaId: '',
       toCajaId: '',
-      cajaId: availableCajas[0]?.id || '',
+      cajaId: '',
       category: incomeCategories[0]?.name || '',
       date: format(now, 'yyyy-MM-dd'),
       time: format(now, 'HH:mm'),
@@ -113,6 +100,22 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas,
   const handleCategoryChange = (categoryName) => {
     setFormData(prev => ({ ...prev, category: categoryName }));
   };
+  
+  const handleOpenCajaModal = (context) => {
+    setCajaSelectionContext(context);
+    setIsCajaModalOpen(true);
+  };
+
+  const handleSelectCaja = (caja) => {
+    if (cajaSelectionContext === 'from') {
+      setFormData(prev => ({ ...prev, fromCajaId: caja.id, fromMemberId: caja.member_id }));
+    } else if (cajaSelectionContext === 'to') {
+      setFormData(prev => ({ ...prev, toCajaId: caja.id, toMemberId: caja.member_id }));
+    } else if (cajaSelectionContext === 'standard') {
+      setFormData(prev => ({ ...prev, cajaId: caja.id, memberId: caja.member_id }));
+    }
+    setIsCajaModalOpen(false);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -133,8 +136,8 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas,
         
         const fromCaja = cajas.find(c => String(c.id) === String(formData.fromCajaId));
         const toCaja = cajas.find(c => String(c.id) === String(formData.toCajaId));
-        const fromMemberId = formData.type === 'Transferencia' ? formData.fromMemberId : fromCaja?.member_id;
-        const toMemberId = formData.type === 'Transferencia' ? formData.toMemberId : toCaja?.member_id;
+        const fromMemberId = formData.fromMemberId;
+        const toMemberId = formData.toMemberId;
 
         const expenseTx = {
             date: transactionDate,
@@ -193,131 +196,146 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas,
   const isInternalTransfer = formData.type === 'Interna';
   const isStandardTransaction = formData.type === 'Ingreso' || formData.type === 'Gasto';
 
-  const fromMemberCajas = cajas.filter(c => 
-    (c.type === 'Cuenta Bancaria' || c.type === 'Efectivo') && 
-    (String(c.member_id) === String(formData.fromMemberId) || c.member_id === null)
-  );
-  const toMemberCajas = cajas.filter(c => 
-    (c.type === 'Cuenta Bancaria' || c.type === 'Efectivo') && 
-    (String(c.member_id) === String(formData.toMemberId) || c.member_id === null)
-  );
-  const bankAccounts = cajas.filter(c => c.type === 'Cuenta Bancaria');
-  const cashBoxes = cajas.filter(c => c.type === 'Efectivo');
-  const standardCajas = cajas.filter(c => String(c.member_id) === String(formData.memberId) || c.member_id === null);
-
   const categoriesWithIcons = categoriesForSelector.map(cat => ({
     ...cat,
     icon: categoryIconMap[cat.name],
   }));
+  
+  const FromCajaIcon = cajas.find(c => c.id === formData.fromCajaId)?.icon || Wallet;
+  const ToCajaIcon = cajas.find(c => c.id === formData.toCajaId)?.icon || Wallet;
+  const StandardCajaIcon = cajas.find(c => c.id === formData.cajaId)?.icon || Wallet;
+
+  const fromCaja = cajas.find(c => c.id === formData.fromCajaId);
+  const fromMember = fromCaja ? members.find(m => m.id === fromCaja.member_id) : null;
+
+  const toCaja = cajas.find(c => c.id === formData.toCajaId);
+  const toMember = toCaja ? members.find(m => m.id === toCaja.member_id) : null;
+  
+  const standardCaja = cajas.find(c => c.id === formData.cajaId);
+  const standardMember = standardCaja ? members.find(m => m.id === standardCaja.member_id) : null;
 
   return (
-    <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-lg">
-      <h2 className="text-xl font-bold text-slate-800 mb-4">{isEditing ? 'Editar Transacción' : 'Añadir Transacción'}</h2>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        
-        <div>
-            <label htmlFor="amount" className="block text-sm font-medium text-slate-700 mb-1">Monto (PEN)</label>
-            <input 
-                type="number" name="amount" id="amount" value={formData.amount} onChange={handleInputChange} 
-                className="block w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-center text-lg" 
-                placeholder="0.00" required step="0.01" 
-            />
-        </div>
-
-        <ToggleSwitch selectedType={formData.type} onChange={handleTypeChange} />
-        
-        {isStandardTransaction && (
-          <>
-            <CategorySelector
-              label={`Categoría de ${formData.type === 'Ingreso' ? 'ingreso' : 'gasto'}`}
-              categories={categoriesWithIcons}
-              selectedCategory={formData.category}
-              onSelect={handleCategoryChange}
-            />
-            <FormSelect id="memberId" name="memberId" label="Miembro" value={formData.memberId} onChange={handleInputChange}>
-              {members.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}
-            </FormSelect>
-            <FormSelect id="cajaId" name="cajaId" label="Caja" value={formData.cajaId} onChange={handleInputChange}>
-               {standardCajas.map(caja => <option key={caja.id} value={caja.id}>{caja.name}</option>)}
-            </FormSelect>
-          </>
-        )}
-
-        {isTransfer && (
-          <div className="grid grid-cols-2 gap-4">
-            <FormSelect id="fromMemberId" name="fromMemberId" label="De Miembro" value={formData.fromMemberId} onChange={handleInputChange}>
-              {members.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}
-            </FormSelect>
-             <FormSelect id="fromCajaId" name="fromCajaId" label="Desde Caja" value={formData.fromCajaId} onChange={handleInputChange}>
-                <option value="" disabled>Selecciona origen</option>
-                {fromMemberCajas.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </FormSelect>
-            <FormSelect id="toMemberId" name="toMemberId" label="Para Miembro" value={formData.toMemberId} onChange={handleInputChange}>
-              {members.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}
-            </FormSelect>
-             <FormSelect id="toCajaId" name="toCajaId" label="Hacia Caja" value={formData.toCajaId} onChange={handleInputChange}>
-                <option value="" disabled>Selecciona destino</option>
-                {toMemberCajas.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </FormSelect>
+    <>
+      <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-lg">
+        <h2 className="text-xl font-bold text-slate-800 mb-4">{isEditing ? 'Editar Transacción' : 'Añadir Transacción'}</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          
+          <div>
+              <label htmlFor="amount" className="block text-sm font-medium text-slate-700 mb-1">Monto (PEN)</label>
+              <input 
+                  type="number" name="amount" id="amount" value={formData.amount} onChange={handleInputChange} 
+                  className="block w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-center text-lg" 
+                  placeholder="0.00" required step="0.01" 
+              />
           </div>
-        )}
 
-        {isInternalTransfer && (
-          <div className="grid grid-cols-2 gap-4">
-            <FormSelect id="fromCajaId" name="fromCajaId" label="Desde Caja (Banco)" value={formData.fromCajaId} onChange={handleInputChange}>
-              <option value="" disabled>Selecciona origen</option>
-              {bankAccounts.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </FormSelect>
-            <FormSelect id="toCajaId" name="toCajaId" label="Hacia Caja (Efectivo)" value={formData.toCajaId} onChange={handleInputChange}>
-              <option value="" disabled>Selecciona destino</option>
-              {cashBoxes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </FormSelect>
+          <ToggleSwitch selectedType={formData.type} onChange={handleTypeChange} />
+          
+          {isStandardTransaction && (
+            <>
+              <CategorySelector
+                label={`Categoría de ${formData.type === 'Ingreso' ? 'ingreso' : 'gasto'}`}
+                categories={categoriesWithIcons}
+                selectedCategory={formData.category}
+                onSelect={handleCategoryChange}
+              />
+              <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Caja</label>
+                  <button type="button" onClick={() => handleOpenCajaModal('standard')} className="w-full text-left flex items-center justify-between gap-3 px-3 py-3 text-base border-slate-300 bg-slate-50 rounded-xl shadow-sm">
+                      <div className="flex items-center gap-3 truncate">
+                          <StandardCajaIcon className="h-5 w-5 text-slate-500 flex-shrink-0" />
+                          <span className="truncate">{standardCaja?.name || 'Seleccionar Caja'}</span>
+                      </div>
+                      {standardMember && (
+                          <img src={standardMember.avatar} alt={standardMember.name} className="h-6 w-6 rounded-full flex-shrink-0" />
+                      )}
+                  </button>
+              </div>
+            </>
+          )}
+
+          {(isTransfer || isInternalTransfer) && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Desde Caja</label>
+                  <button type="button" onClick={() => handleOpenCajaModal('from')} className="w-full text-left flex items-center justify-between gap-3 px-3 py-3 text-base border-slate-300 bg-slate-50 rounded-xl shadow-sm">
+                      <div className="flex items-center gap-3 truncate">
+                          <FromCajaIcon className="h-5 w-5 text-slate-500 flex-shrink-0" />
+                          <span className="truncate">{fromCaja?.name || 'Seleccionar Origen'}</span>
+                      </div>
+                      {fromMember && (
+                          <img src={fromMember.avatar} alt={fromMember.name} className="h-6 w-6 rounded-full flex-shrink-0" />
+                      )}
+                  </button>
+              </div>
+              <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Hacia Caja</label>
+                  <button type="button" onClick={() => handleOpenCajaModal('to')} className="w-full text-left flex items-center justify-between gap-3 px-3 py-3 text-base border-slate-300 bg-slate-50 rounded-xl shadow-sm">
+                      <div className="flex items-center gap-3 truncate">
+                          <ToCajaIcon className="h-5 w-5 text-slate-500 flex-shrink-0" />
+                          <span className="truncate">{toCaja?.name || 'Seleccionar Destino'}</span>
+                      </div>
+                      {toMember && (
+                          <img src={toMember.avatar} alt={toMember.name} className="h-6 w-6 rounded-full flex-shrink-0" />
+                      )}
+                  </button>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-5 gap-4">
+              <div className="col-span-3">
+                  <label htmlFor="date" className="block text-sm font-medium text-slate-700 mb-1">Fecha</label>
+                  <div className="relative">
+                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                          <CalendarDays className="h-5 w-5 text-slate-400" />
+                      </div>
+                      <input type="date" name="date" id="date" value={formData.date} onChange={handleInputChange} className="block w-full rounded-xl border-slate-300 bg-slate-50 py-3 pl-10 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" />
+                  </div>
+              </div>
+              <div className="col-span-2">
+                  <label htmlFor="time" className="block text-sm font-medium text-slate-700 mb-1">Hora</label>
+                  <div className="relative">
+                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                          <Clock className="h-5 w-5 text-slate-400" />
+                      </div>
+                      <input type="time" name="time" id="time" value={formData.time} onChange={handleInputChange} className="block w-full rounded-xl border-slate-300 bg-slate-50 py-3 pl-10 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" />
+                  </div>
+              </div>
           </div>
-        )}
 
-        <div className="grid grid-cols-2 gap-4">
-            <div>
-                <label htmlFor="date" className="block text-sm font-medium text-slate-700 mb-1">Fecha</label>
-                <div className="relative">
-                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                        <CalendarDays className="h-5 w-5 text-slate-400" />
-                    </div>
-                    <input type="date" name="date" id="date" value={formData.date} onChange={handleInputChange} className="block w-full rounded-xl border-slate-300 bg-slate-50 py-3 pl-10 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" />
-                </div>
-            </div>
-            <div>
-                <label htmlFor="time" className="block text-sm font-medium text-slate-700 mb-1">Hora</label>
-                <div className="relative">
-                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                        <Clock className="h-5 w-5 text-slate-400" />
-                    </div>
-                    <input type="time" name="time" id="time" value={formData.time} onChange={handleInputChange} className="block w-full rounded-xl border-slate-300 bg-slate-50 py-3 pl-10 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm" />
-                </div>
-            </div>
-        </div>
+          <div>
+            <label htmlFor="description" className="block text-sm font-medium text-slate-700 mb-1">Descripción</label>
+            <input type="text" name="description" id="description" value={formData.description} onChange={handleInputChange} className="block w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm" />
+          </div>
 
-        <div>
-          <label htmlFor="description" className="block text-sm font-medium text-slate-700 mb-1">Descripción</label>
-          <input type="text" name="description" id="description" value={formData.description} onChange={handleInputChange} className="block w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm" />
-        </div>
-
-        <div className="pt-2 flex flex-col items-center gap-3">
-          <button
-            type="submit"
-            className="w-full px-4 py-3 text-base font-semibold text-white bg-primary-600 border border-transparent rounded-full shadow-sm hover:bg-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-500"
-          >
-            {isEditing ? 'Actualizar' : 'Agregar'}
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-sm font-medium text-slate-600 hover:text-primary-600"
-          >
-            Cancelar
-          </button>
-        </div>
-      </form>
-    </div>
+          <div className="pt-2 flex flex-col items-center gap-3">
+            <button
+              type="submit"
+              className="w-full px-4 py-3 text-base font-semibold text-white bg-primary-600 border border-transparent rounded-full shadow-sm hover:bg-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-500"
+            >
+              {isEditing ? 'Actualizar' : 'Agregar'}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-sm font-medium text-slate-600 hover:text-primary-600"
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      </div>
+      <SelectCajaModal
+        isOpen={isCajaModalOpen}
+        onClose={() => setIsCajaModalOpen(false)}
+        cajas={cajas}
+        members={members}
+        onSelect={handleSelectCaja}
+        title={`Seleccionar Caja`}
+        excludeMemberId={cajaSelectionContext === 'to' && formData.type === 'Transferencia' ? formData.fromMemberId : null}
+      />
+    </>
   );
 };
 
