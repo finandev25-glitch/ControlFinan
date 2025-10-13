@@ -6,6 +6,26 @@ export const members = [
   { id: 3, name: 'Ana Lopez', avatar: faker.image.avatar(), role: 'Dependiente' },
 ];
 
+export const categories = [
+  // Gastos
+  { name: 'Alimentación', type: 'Gasto', icon_name: 'ShoppingBasket' },
+  { name: 'Transporte', type: 'Gasto', icon_name: 'Car' },
+  { name: 'Vivienda', type: 'Gasto', icon_name: 'Home' },
+  { name: 'Ocio', type: 'Gasto', icon_name: 'Smile' },
+  { name: 'Salud', type: 'Gasto', icon_name: 'HeartPulse' },
+  { name: 'Educación', type: 'Gasto', icon_name: 'GraduationCap' },
+  { name: 'Servicios', type: 'Gasto', icon_name: 'Home' },
+  { name: 'Suscripciones', type: 'Gasto', icon_name: 'Smile' },
+  // Ingresos
+  { name: 'Nómina', type: 'Ingreso', icon_name: 'Briefcase' },
+  { name: 'Beneficios', type: 'Ingreso', icon_name: 'Landmark' },
+  { name: 'Ventas', type: 'Ingreso', icon_name: 'TrendingUp' },
+  { name: 'Regalo', type: 'Ingreso', icon_name: 'Gift' },
+  // Común
+  { name: 'Otros', type: 'Ingreso', icon_name: 'MoreHorizontal' },
+  { name: 'Otros', type: 'Gasto', icon_name: 'MoreHorizontal' },
+];
+
 export const cajas = [
     { 
       id: 1, 
@@ -49,9 +69,9 @@ export const cajas = [
 ];
 
 export const budgets = [
-  { categoria: 'Alimentación', limite: 1500 },
-  { categoria: 'Transporte', limite: 400 },
-  { categoria: 'Ocio', limite: 600 },
+  { category: 'Alimentación', limit: 1500 },
+  { category: 'Transporte', limit: 400 },
+  { category: 'Ocio', limit: 600 },
 ];
 
 export const scheduledExpenses = [
@@ -77,8 +97,8 @@ export const scheduledExpenses = [
   },
 ];
 
-const incomeCategoriesNames = ['Nómina', 'Beneficios', 'Ventas', 'Regalo', 'Otros'];
-const expenseCategoriesNames = ['Alimentación', 'Transporte', 'Vivienda', 'Ocio', 'Salud', 'Educación', 'Servicios', 'Suscripciones', 'Otros'];
+const incomeCategoriesNames = categories.filter(c => c.type === 'Ingreso').map(c => c.name);
+const expenseCategoriesNames = categories.filter(c => c.type === 'Gasto').map(c => c.name);
 
 export const transactions = Array.from({ length: 250 }, (_, i) => {
   const contributingMembers = members.filter(m => m.role !== 'Dependiente');

@@ -1,12 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { expenseCategories, incomeCategories } from '../data/constants';
 import { Search, Filter } from 'lucide-react';
 
 const formatCurrency = (amount) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(amount);
 const formatDate = (date) => new Date(date).toLocaleDateString('es-ES');
-
-const allCategoryNames = [...new Set([...expenseCategories.map(c => c.name), ...incomeCategories.map(c => c.name)])];
-const allCategories = ['Transferencia', ...allCategoryNames].sort();
 
 const TypeBadge = ({ type }) => {
   const baseClasses = "px-2 py-0.5 text-xs font-medium rounded-full";
@@ -17,12 +13,14 @@ const TypeBadge = ({ type }) => {
   return <span className={`${baseClasses} ${typeClasses[type]}`}>{type}</span>;
 };
 
-const ReportsPage = ({ transactions, cajas, members }) => {
+const ReportsPage = ({ transactions, cajas, members, categories }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('Todos');
   const [filterMember, setFilterMember] = useState('Todos');
   const [filterCategory, setFilterCategory] = useState('Todos');
   const [filterCaja, setFilterCaja] = useState('Todos');
+
+  const allCategoryNames = useMemo(() => ['Transferencia', ...categories.map(c => c.name)].sort(), [categories]);
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
@@ -78,7 +76,7 @@ const ReportsPage = ({ transactions, cajas, members }) => {
               onChange={(e) => setFilterCategory(e.target.value)}
             >
               <option value="Todos">Todas las Categorías</option>
-              {allCategories.map(c => <option key={c}>{c}</option>)}
+              {allCategoryNames.map(c => <option key={c}>{c}</option>)}
             </select>
           </div>
           <div>

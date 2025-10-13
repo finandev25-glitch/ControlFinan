@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { incomeCategories, expenseCategories } from '../data/constants';
 import ToggleSwitch from './ToggleSwitch';
 import CategorySelector from './CategorySelector';
 import { CalendarDays, Clock } from 'lucide-react';
@@ -19,7 +18,7 @@ const FormSelect = ({ id, label, children, ...props }) => (
     </div>
 );
 
-const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas }) => {
+const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas, incomeCategories, expenseCategories, categoryIconMap }) => {
   const getInitialFormState = () => {
     const now = new Date();
     const initialMemberId = selectedMemberId || members[0]?.id || '';
@@ -34,7 +33,7 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas 
       fromCajaId: '',
       toCajaId: '',
       cajaId: availableCajas[0]?.id || '',
-      category: incomeCategories[0].name,
+      category: incomeCategories[0]?.name || '',
       date: format(now, 'yyyy-MM-dd'),
       time: format(now, 'HH:mm'),
     };
@@ -55,7 +54,7 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas 
     setFormData(prev => ({
       ...getInitialFormState(),
       type,
-      category: type === 'Ingreso' ? incomeCategories[0].name : expenseCategories[0].name,
+      category: type === 'Ingreso' ? incomeCategories[0]?.name : expenseCategories[0]?.name,
     }));
   };
 
@@ -83,7 +82,7 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas 
     onSave(dataToSave);
   };
   
-  const categories = formData.type === 'Ingreso' ? incomeCategories : expenseCategories;
+  const categoriesForSelector = formData.type === 'Ingreso' ? incomeCategories : expenseCategories;
   const isTransfer = formData.type === 'Transferencia';
   const isInternalTransfer = formData.type === 'Interna';
   const isStandardTransaction = formData.type === 'Ingreso' || formData.type === 'Gasto';
@@ -99,6 +98,11 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas 
   const bankAccounts = cajas.filter(c => c.type === 'Cuenta Bancaria');
   const cashBoxes = cajas.filter(c => c.type === 'Efectivo');
   const standardCajas = cajas.filter(c => c.member_id === formData.memberId || c.member_id === null);
+
+  const categoriesWithIcons = categoriesForSelector.map(cat => ({
+    ...cat,
+    icon: categoryIconMap[cat.name],
+  }));
 
   return (
     <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-lg">
@@ -119,7 +123,7 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas 
           <>
             <CategorySelector
               label={`Categoría de ${formData.type === 'Ingreso' ? 'ingreso' : 'gasto'}`}
-              categories={categories}
+              categories={categoriesWithIcons}
               selectedCategory={formData.category}
               onSelect={handleCategoryChange}
             />

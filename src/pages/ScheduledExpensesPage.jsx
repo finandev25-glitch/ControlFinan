@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Tag } from 'lucide-react';
 import AddScheduledExpenseModal from '../components/AddScheduledExpenseModal';
 import PeriodSelector from '../components/PeriodSelector';
 import ScheduledExpenseCard from '../components/ScheduledExpenseCard';
+import * as Icons from 'lucide-react';
 
 const getCreditCardDebtForCycle = (creditCard, transactions, year, month) => {
   if (!creditCard) return 0;
@@ -28,6 +29,8 @@ const ScheduledExpensesPage = ({
   members, 
   cajas,
   transactions,
+  expenseCategories,
+  categoryIconMap,
   selectedYear,
   selectedMonth,
   onYearChange,
@@ -38,12 +41,12 @@ const ScheduledExpensesPage = ({
   const monthlyProjectedExpenses = useMemo(() => {
     return scheduledExpenses.map(exp => {
       let amount = exp.amount;
-      if (exp.isCreditCardPayment) {
-        const creditCard = cajas.find(c => c.id === exp.creditCardId);
+      if (exp.is_credit_card_payment) {
+        const creditCard = cajas.find(c => c.id === exp.credit_card_id);
         amount = getCreditCardDebtForCycle(creditCard, transactions, selectedYear, selectedMonth);
       }
       return { ...exp, amount };
-    }).sort((a, b) => b.dayOfMonth - a.dayOfMonth); // Ordenado por día de forma descendente
+    }).sort((a, b) => b.day_of_month - a.day_of_month);
   }, [scheduledExpenses, cajas, transactions, selectedYear, selectedMonth]);
 
   return (
@@ -74,14 +77,16 @@ const ScheduledExpensesPage = ({
         {monthlyProjectedExpenses.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
             {monthlyProjectedExpenses.map(expense => {
-              const member = members.find(m => m.id === expense.memberId);
-              const caja = cajas.find(c => c.id === expense.cajaId);
+              const member = members.find(m => m.id === expense.member_id);
+              const caja = cajas.find(c => c.id === expense.caja_id);
+              const Icon = categoryIconMap[expense.category] || Tag;
               return (
                 <ScheduledExpenseCard
                   key={expense.id}
                   expense={expense}
                   member={member}
                   caja={caja}
+                  icon={Icon}
                 />
               );
             })}
@@ -99,6 +104,8 @@ const ScheduledExpensesPage = ({
         onSave={onAddScheduledExpense}
         members={members.filter(m => m.role !== 'Dependiente')}
         cajas={cajas}
+        expenseCategories={expenseCategories}
+        categoryIconMap={categoryIconMap}
       />
     </>
   );

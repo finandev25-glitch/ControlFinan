@@ -1,12 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { PlusCircle } from 'lucide-react';
-import { expenseCategories } from '../data/constants';
 import BudgetCard from '../components/BudgetCard';
 import AddBudgetModal from '../components/AddBudgetModal';
 import PeriodSelector from '../components/PeriodSelector';
 import { startOfMonth, endOfMonth } from 'date-fns';
+import * as Icons from 'lucide-react';
 
-const BudgetsPage = ({ budgets, transactions, onSaveBudget, selectedYear, selectedMonth, onYearChange, onMonthChange }) => {
+const BudgetsPage = ({ budgets, transactions, onSaveBudget, expenseCategories, categoryIconMap, selectedYear, selectedMonth, onYearChange, onMonthChange }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const budgetsWithSpending = useMemo(() => {
@@ -24,15 +24,15 @@ const BudgetsPage = ({ budgets, transactions, onSaveBudget, selectedYear, select
         .filter(t => t.type === 'Gasto' && t.category === budget.category)
         .reduce((sum, t) => sum + t.amount, 0);
       
-      const categoryInfo = expenseCategories.find(c => c.name === budget.category);
+      const Icon = categoryIconMap[budget.category] || Icons.Tag;
 
       return {
         ...budget,
         spent,
-        icon: categoryInfo?.icon,
+        icon: Icon,
       };
     });
-  }, [budgets, transactions, selectedYear, selectedMonth]);
+  }, [budgets, transactions, selectedYear, selectedMonth, categoryIconMap]);
 
   return (
     <>
@@ -71,6 +71,7 @@ const BudgetsPage = ({ budgets, transactions, onSaveBudget, selectedYear, select
         onClose={() => setIsModalOpen(false)}
         onSave={onSaveBudget}
         existingBudgets={budgets}
+        expenseCategories={expenseCategories}
       />
     </>
   );

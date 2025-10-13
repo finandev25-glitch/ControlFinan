@@ -9,9 +9,8 @@ import ProjectedBalanceCard from '../components/ProjectedBalanceCard';
 import ProjectedExpensesModal from '../components/ProjectedExpensesModal';
 import { Users } from 'lucide-react';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
-import { members as allMembers, expenseCategories } from '../data/mockData';
 
-const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpenses, selectedYear, selectedMonth, onYearChange, onMonthChange }) => {
+const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpenses, categoryIconMap, selectedYear, selectedMonth, onYearChange, onMonthChange }) => {
   const [selectedMemberId, setSelectedMemberId] = useState('all');
   const [isProjectedExpensesModalOpen, setProjectedExpensesModalOpen] = useState(false);
 
@@ -32,7 +31,7 @@ const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpense
     const filterTransactions = (txs, from, to, memberId) => {
       return txs.filter(t => {
         const transactionDate = new Date(t.date);
-        const memberMatch = memberId === 'all' || t.memberId === memberId;
+        const memberMatch = memberId === 'all' || t.member_id === memberId;
         return transactionDate >= from && transactionDate <= to && memberMatch;
       });
     };
@@ -73,7 +72,7 @@ const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpense
     
     const recentWithAvatars = currentTransactions.slice(0, 5).map(t => ({
         ...t,
-        memberAvatar: members.find(m => m.id === t.memberId)?.avatar,
+        memberAvatar: members.find(m => m.id === t.member_id)?.avatar,
     }));
 
     const totalBudgetLimit = budgets.reduce((sum, b) => sum + b.limit, 0);
@@ -81,21 +80,21 @@ const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpense
       const spent = currentTransactions
         .filter(t => t.type === 'Gasto' && t.category === budget.category)
         .reduce((sum, t) => sum + t.amount, 0);
-      const categoryInfo = expenseCategories.find(c => c.name === budget.category);
-      return { ...budget, spent, icon: categoryInfo?.icon };
+      const Icon = categoryIconMap[budget.category];
+      return { ...budget, spent, icon: Icon };
     });
     const totalSpentOnBudgetCategories = budgetsWithSpending.reduce((sum, b) => sum + b.spent, 0);
     
     const periodKey = format(selectedDate, 'yyyy-MM');
     const pendingScheduledExpenses = scheduledExpenses
       .filter(exp => {
-        const isConfirmed = exp.confirmedMonths?.includes(periodKey);
-        const memberMatch = selectedMemberId === 'all' || exp.memberId === selectedMemberId;
+        const isConfirmed = exp.confirmed_months?.includes(periodKey);
+        const memberMatch = selectedMemberId === 'all' || exp.member_id === selectedMemberId;
         return !isConfirmed && memberMatch;
       });
 
     const getCreditCardDebtForCycle = (creditCard) => {
-        const closingDay = creditCard.closingDay;
+        const closingDay = creditCard.closing_day;
         const cycleEndDate = new Date(selectedYear, selectedMonth, closingDay);
         const cycleStartDate = new Date(cycleEndDate);
         cycleStartDate.setMonth(cycleStartDate.getMonth() - 1);
@@ -103,7 +102,7 @@ const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpense
 
         const cycleTransactions = transactions.filter(t => {
             const txDate = new Date(t.date);
-            return t.cajaId === creditCard.id &&
+            return t.caja_id === creditCard.id &&
                    t.type === 'Gasto' &&
                    txDate >= cycleStartDate &&
                    txDate <= cycleEndDate;
@@ -112,8 +111,8 @@ const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpense
     };
 
     const projectedExpensesWithDetails = pendingScheduledExpenses.map(exp => {
-        if (exp.isCreditCardPayment) {
-            const creditCard = cajas.find(c => c.id === exp.creditCardId);
+        if (exp.is_credit_card_payment) {
+            const creditCard = cajas.find(c => c.id === exp.credit_card_id);
             if (creditCard) {
                 const debt = getCreditCardDebtForCycle(creditCard);
                 return { ...exp, amount: debt };
@@ -142,7 +141,7 @@ const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpense
         details: projectedExpensesWithDetails,
       },
     };
-  }, [transactions, scheduledExpenses, selectedYear, selectedMonth, selectedMemberId, members, budgets, cajas]);
+  }, [transactions, scheduledExpenses, selectedYear, selectedMonth, selectedMemberId, members, budgets, cajas, categoryIconMap]);
 
   return (
     <>
@@ -164,7 +163,7 @@ const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpense
                       onChange={(e) => setSelectedMemberId(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
                   >
                       <option value="all">Todos los Miembros</option>
-                      {allMembers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                      {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                   </select>
               </div>
               <PeriodSelector selectedYear={selectedYear} selectedMonth={selectedMonth} onYearChange={onYearChange} onMonthChange={onMonthChange} />

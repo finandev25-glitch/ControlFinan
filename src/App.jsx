@@ -9,13 +9,15 @@ import AdvancedReportsPage from './pages/AdvancedReportsPage';
 import BudgetsPage from './pages/BudgetsPage';
 import ArqueoPage from './pages/ArqueoPage';
 import ScheduledExpensesPage from './pages/ScheduledExpensesPage';
+import SettingsPage from './pages/SettingsPage';
 import ConfirmExpenseModal from './components/ConfirmExpenseModal';
 import { supabase } from './supabaseClient';
-import { Wallet, Landmark, CreditCard, University, LoaderCircle } from 'lucide-react';
+import { Wallet, Landmark, CreditCard, University, LoaderCircle, Tag } from 'lucide-react';
 import { format, isWithinInterval, addDays, startOfDay } from 'date-fns';
 import { faker } from '@faker-js/faker';
+import * as Icons from 'lucide-react';
 
-const iconMap = {
+const cajaIconMap = {
   'Efectivo': Wallet,
   'Cuenta Bancaria': Landmark,
   'Tarjeta de Crédito': CreditCard,
@@ -29,9 +31,18 @@ function App() {
   const [cajas, setCajas] = useState([]);
   const [budgets, setBudgets] = useState([]);
   const [scheduledExpenses, setScheduledExpenses] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [expenseToConfirm, setExpenseToConfirm] = useState(null);
+
+  const categoryIconMap = useMemo(() => {
+    return categories.reduce((acc, cat) => {
+      const IconComponent = Icons[cat.icon_name] || Tag;
+      acc[cat.name] = IconComponent;
+      return acc;
+    }, {});
+  }, [categories]);
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -40,7 +51,6 @@ function App() {
         const { data: membersData } = await supabase.from('members').select('*');
         
         if (membersData && membersData.length === 0) {
-          // Database is empty, let's seed it.
           await seedDatabase();
         }
 
@@ -49,21 +59,24 @@ function App() {
           { data: finalCajas },
           { data: finalTransactions },
           { data: finalBudgets },
-          { data: finalScheduled }
+          { data: finalScheduled },
+          { data: finalCategories }
         ] = await Promise.all([
           supabase.from('members').select('*'),
           supabase.from('cajas').select('*'),
           supabase.from('transactions').select('*').order('date', { ascending: false }),
           supabase.from('budgets').select('*'),
-          supabase.from('scheduled_expenses').select('*')
+          supabase.from('scheduled_expenses').select('*'),
+          supabase.from('categories').select('*')
         ]);
 
         const safeMembers = finalMembers || [];
         setMembers(safeMembers);
         setTransactions((finalTransactions || []).map(t => ({...t, memberName: safeMembers.find(m => m.id === t.member_id)?.name })) || []);
-        setCajas((finalCajas || []).map(c => ({ ...c, icon: iconMap[c.type] })) || []);
+        setCajas((finalCajas || []).map(c => ({ ...c, icon: cajaIconMap[c.type] })) || []);
         setBudgets(finalBudgets || []);
         setScheduledExpenses(finalScheduled || []);
+        setCategories(finalCategories || []);
 
       } catch (error) {
         console.error("Error loading data from Supabase:", error);
@@ -77,7 +90,7 @@ function App() {
 
   const seedDatabase = async () => {
     console.log("Database is empty. Seeding data...");
-    const { members: mockMembers, cajas: mockCajas, transactions: mockTransactions, budgets: mockBudgets, scheduledExpenses: mockScheduled } = await import('./data/seed.js');
+    const { members: mockMembers, cajas: mockCajas, transactions: mockTransactions, budgets: mockBudgets, scheduledExpenses: mockScheduled, categories: mockCategories } = await import('./data/seed.js');
     
     await supabase.from('members').insert(mockMembers);
     
@@ -101,6 +114,8 @@ function App() {
         confirmed_months: rest.confirmedMonths,
     }));
     await supabase.from('scheduled_expenses').insert(scheduledToInsert);
+    
+    await supabase.from('categories').insert(mockCategories);
     console.log("Seeding complete.");
   };
 
@@ -162,7 +177,7 @@ function App() {
       console.error('Error adding caja:', error);
     } else if (data && data.length > 0) {
       const newCaja = data[0];
-      const newCajaWithIcon = { ...newCaja, icon: iconMap[newCaja.type] };
+      const newCajaWithIcon = { ...newCaja, icon: cajaIconMap[newCaja.type] };
       setCajas(prev => [...prev, newCajaWithIcon]);
 
       if (newCaja.type === 'Préstamos' || newCaja.type === 'Tarjeta de Crédito') {
@@ -236,7 +251,7 @@ function App() {
       if (cajaError) {
           console.error('Error creating default cash box:', cajaError);
       } else if (cajaData && cajaData.length > 0) {
-          const newCajaWithIcon = { ...cajaData[0], icon: iconMap[cajaData[0].type] };
+          const newCajaWithIcon = { ...cajaData[0], icon: cajaIconMap[cajaData[0].type] };
           setCajas(prev => [...prev, newCajaWithIcon]);
       }
     }
@@ -272,6 +287,32 @@ function App() {
     ));
   };
 
+  const handleAddCategory = async (categoryData) => {
+    const { data, error } = await supabase.from('categories').insert([categoryData]).select();
+    if (error) {
+      console.error('Error adding category:', error);
+    } else if (data && data.length > 0) {
+      setCategories(prev => [...prev, data[0]]);
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId) => {
+    const { error } = await supabase.from('categories').delete().eq('id', categoryId);
+    if (error) {
+      console.error('Error deleting category:', error);
+    } else {
+      setCategories(prev => prev.filter(c => c.id !== categoryId));
+    }
+  };
+
+  const handleUpdateMemberAvatar = async (memberId, newAvatar) => {
+    const { data, error } = await supabase.from('members').update({ avatar: newAvatar }).eq('id', memberId).select();
+    if (error) {
+      console.error('Error updating avatar:', error);
+    } else if (data && data.length > 0) {
+      setMembers(prev => prev.map(m => m.id === memberId ? data[0] : m));
+    }
+  };
 
   const handleOpenConfirmModal = (expense) => {
     let expenseToReview = { ...expense, amount: expense.amount, dayOfMonth: expense.day_of_month, memberId: expense.member_id };
@@ -370,6 +411,9 @@ function App() {
     );
   }
 
+  const incomeCategories = categories.filter(c => c.type === 'Ingreso');
+  const expenseCategories = categories.filter(c => c.type === 'Gasto');
+
   return (
     <Router>
       <Layout 
@@ -388,17 +432,18 @@ function App() {
                 budgets={budgets} 
                 cajas={cajas}
                 scheduledExpenses={scheduledExpenses}
+                categoryIconMap={categoryIconMap}
                 {...periodProps} 
               />
             } 
           />
           <Route 
             path="/miembros" 
-            element={<MembersPage transactions={transactions} onAddTransactions={handleAddTransactions} cajas={cajas} members={members} onAddMember={handleAddMember} onDeleteMember={handleDeleteMember} />} 
+            element={<MembersPage transactions={transactions} onAddTransactions={handleAddTransactions} cajas={cajas} members={members} onAddMember={handleAddMember} onDeleteMember={handleDeleteMember} incomeCategories={incomeCategories} expenseCategories={expenseCategories} categoryIconMap={categoryIconMap} />} 
           />
           <Route 
             path="/cajas" 
-            element={<CajasPage transactions={transactions} cajas={cajas} onAddCaja={handleAddCaja} members={members} onAddTransactions={handleAddTransactions} />} 
+            element={<CajasPage transactions={transactions} cajas={cajas} onAddCaja={handleAddCaja} members={members} />} 
           />
           <Route 
             path="/arqueo" 
@@ -406,15 +451,15 @@ function App() {
           />
           <Route 
             path="/reportes" 
-            element={<ReportsPage transactions={transactions} cajas={cajas} members={members} />} 
+            element={<ReportsPage transactions={transactions} cajas={cajas} members={members} categories={categories} />} 
           />
            <Route 
             path="/analisis" 
-            element={<AdvancedReportsPage transactions={transactions} members={members} {...periodProps} />} 
+            element={<AdvancedReportsPage transactions={transactions} members={members} incomeCategories={incomeCategories} expenseCategories={expenseCategories} categoryIconMap={categoryIconMap} {...periodProps} />} 
           />
           <Route 
             path="/presupuesto" 
-            element={<BudgetsPage budgets={budgets} transactions={transactions} onSaveBudget={handleSaveBudget} {...periodProps} />} 
+            element={<BudgetsPage budgets={budgets} transactions={transactions} onSaveBudget={handleSaveBudget} expenseCategories={expenseCategories} categoryIconMap={categoryIconMap} {...periodProps} />} 
           />
           <Route
             path="/gastos-programados"
@@ -425,7 +470,21 @@ function App() {
                 members={members}
                 cajas={cajas}
                 transactions={transactions}
+                expenseCategories={expenseCategories}
+                categoryIconMap={categoryIconMap}
                 {...periodProps}
+              />
+            }
+          />
+          <Route
+            path="/configuracion"
+            element={
+              <SettingsPage
+                categories={categories}
+                members={members}
+                onAddCategory={handleAddCategory}
+                onDeleteCategory={handleDeleteCategory}
+                onUpdateMemberAvatar={handleUpdateMemberAvatar}
               />
             }
           />

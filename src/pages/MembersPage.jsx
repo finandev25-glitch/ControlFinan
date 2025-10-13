@@ -7,7 +7,7 @@ import DeleteMemberModal from '../components/DeleteMemberModal';
 
 const formatCurrency = (amount) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(amount);
 
-const MembersPage = ({ transactions, onAddTransactions, cajas, members, onAddMember, onDeleteMember }) => {
+const MembersPage = ({ transactions, onAddTransactions, cajas, members, onAddMember, onDeleteMember, incomeCategories, expenseCategories, categoryIconMap }) => {
   const [selectedMemberId, setSelectedMemberId] = useState(members[0]?.id);
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
@@ -181,6 +181,9 @@ const MembersPage = ({ transactions, onAddTransactions, cajas, members, onAddMem
                   selectedMemberId={selectedMemberId}
                   onClose={() => setIsFormVisible(false)}
                   cajas={cajas}
+                  incomeCategories={incomeCategories}
+                  expenseCategories={expenseCategories}
+                  categoryIconMap={categoryIconMap}
                 />
               </div>
             ) : (
@@ -200,7 +203,7 @@ const MembersPage = ({ transactions, onAddTransactions, cajas, members, onAddMem
                 <div className="space-y-3">
                   {selectedMemberTransactions.length > 0 ? (
                     selectedMemberTransactions.map(t => (
-                      <TransactionCard key={`${t.id}-${t.date}`} transaction={t} cajas={cajas} />
+                      <TransactionCard key={`${t.id}-${t.date}`} transaction={t} cajas={cajas} categoryIconMap={categoryIconMap} />
                     ))
                   ) : (
                     <div className="text-center py-10 rounded-lg bg-slate-50 border-2 border-dashed border-slate-200">

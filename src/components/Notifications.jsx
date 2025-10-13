@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Bell, Tag, Calendar, User, Wallet } from 'lucide-react';
-import { expenseCategories } from '../data/constants';
+import * as Icons from 'lucide-react';
 
 const formatCurrency = (amount) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(amount);
 
@@ -11,9 +11,18 @@ const InfoLine = ({ icon: Icon, value }) => (
   </div>
 );
 
-const Notifications = ({ pendingExpenses, onReviewExpense, members, cajas }) => {
+const Notifications = ({ pendingExpenses, onReviewExpense, members, cajas, categories }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
+
+  const categoryIconMap = useMemo(() => {
+    if (!categories) return {};
+    return categories.reduce((acc, cat) => {
+      const IconComponent = Icons[cat.icon_name] || Tag;
+      acc[cat.name] = IconComponent;
+      return acc;
+    }, {});
+  }, [categories]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -49,20 +58,19 @@ const Notifications = ({ pendingExpenses, onReviewExpense, members, cajas }) => 
             {pendingExpenses.length > 0 ? (
               <ul>
                 {pendingExpenses.map(expense => {
-                  const member = members.find(m => m.id === expense.miembro_id);
+                  const member = members.find(m => m.id === expense.member_id);
                   const caja = cajas.find(c => c.id === expense.caja_id);
-                  const category = expenseCategories.find(c => c.name === expense.categoria);
-                  const CategoryIcon = category?.icon || Tag;
+                  const CategoryIcon = categoryIconMap[expense.category] || Tag;
 
                   return (
                     <li key={expense.id} className="p-4 hover:bg-slate-50 border-b border-slate-100 last:border-b-0 cursor-pointer" onClick={() => { onReviewExpense(expense); setIsOpen(false); }}>
                       <div className="flex items-start justify-between mb-2">
-                        <h4 className="font-bold text-sm text-slate-800">{expense.descripcion}</h4>
+                        <h4 className="font-bold text-sm text-slate-800">{expense.description}</h4>
                         <CategoryIcon size={16} className="text-slate-400" />
                       </div>
-                      <p className="text-lg font-bold text-red-500 mb-3">{formatCurrency(expense.monto)}</p>
+                      <p className="text-lg font-bold text-red-500 mb-3">{formatCurrency(expense.amount)}</p>
                       <div className="grid grid-cols-2 gap-1.5">
-                        <InfoLine icon={Calendar} value={`Vence el día ${expense.dia_del_mes}`} />
+                        <InfoLine icon={Calendar} value={`Vence el día ${expense.day_of_month}`} />
                         {member && <InfoLine icon={User} value={member.name} />}
                         {caja && <InfoLine icon={Wallet} value={caja.name} />}
                       </div>

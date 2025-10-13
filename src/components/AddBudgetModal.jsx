@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import { expenseCategories } from '../data/mockData';
 
-const AddBudgetModal = ({ isOpen, onClose, onSave, existingBudgets }) => {
+const AddBudgetModal = ({ isOpen, onClose, onSave, existingBudgets, expenseCategories }) => {
   const availableCategories = expenseCategories.filter(
     cat => !existingBudgets.some(b => b.category === cat.name)
   );

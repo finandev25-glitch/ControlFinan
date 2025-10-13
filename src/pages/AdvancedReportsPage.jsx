@@ -1,7 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek, format, startOfDay, endOfDay, subWeeks, startOfYear, eachDayOfInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { expenseCategories } from '../data/constants';
 import MonthlyComparisonCard from '../components/MonthlyComparisonCard';
 import ExpenseChart from '../components/ExpenseChart';
 import DetailedExpenseTable from '../components/DetailedExpenseTable';
@@ -12,13 +11,14 @@ import IntervalToggle from '../components/IntervalToggle';
 import TransactionDetailModal from '../components/TransactionDetailModal';
 import PeriodSelector from '../components/PeriodSelector';
 import { Users, Tag } from 'lucide-react';
+import * as Icons from 'lucide-react';
 
 const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
-const AdvancedReportsPage = ({ transactions, members, selectedYear, selectedMonth, onYearChange, onMonthChange }) => {
+const AdvancedReportsPage = ({ transactions, members, incomeCategories, expenseCategories, categoryIconMap, selectedYear, selectedMonth, onYearChange, onMonthChange }) => {
   const [selectedMemberId, setSelectedMemberId] = useState('all');
   const [selectedCategoryId, setSelectedCategoryId] = useState('all');
-  const [timelineCategory, setTimelineCategory] = useState(expenseCategories[0].name);
+  const [timelineCategory, setTimelineCategory] = useState(expenseCategories[0]?.name || 'all');
   const [timelineInterval, setTimelineInterval] = useState('Diario');
   const [modalData, setModalData] = useState({ isOpen: false, title: '', transactions: [] });
 

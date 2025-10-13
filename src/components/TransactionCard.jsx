@@ -1,6 +1,5 @@
 import React from 'react';
 import { Tag, Calendar } from 'lucide-react';
-import { expenseCategories, incomeCategories } from '../data/constants';
 
 const formatCurrency = (amount) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(amount);
 const formatDate = (date) => new Date(date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' });
@@ -16,12 +15,7 @@ const typeDetails = {
   }
 };
 
-const categoryIconMap = [...expenseCategories, ...incomeCategories].reduce((acc, cat) => {
-    acc[cat.name] = cat.icon;
-    return acc;
-}, {});
-
-const TransactionCard = ({ transaction, cajas }) => {
+const TransactionCard = ({ transaction, cajas, categoryIconMap }) => {
   const cajaMap = React.useMemo(() => cajas.reduce((acc, caja) => {
       acc[caja.id] = caja;
       return acc;

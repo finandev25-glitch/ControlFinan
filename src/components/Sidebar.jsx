@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { PiggyBank, LayoutDashboard, Users, Wallet, Target, BarChart3, FileText, X, ClipboardCheck, CalendarClock } from 'lucide-react';
+import { PiggyBank, LayoutDashboard, Users, Wallet, Target, BarChart3, FileText, X, ClipboardCheck, CalendarClock, Settings } from 'lucide-react';
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
   const location = useLocation();
@@ -27,6 +27,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
     { to: "/presupuesto", icon: Target, text: "Presupuesto" },
     { to: "/reportes", icon: BarChart3, text: "Reportes" },
     { to: "/analisis", icon: FileText, text: "Análisis" },
+    { to: "/configuracion", icon: Settings, text: "Configuración" },
   ];
 
   return (

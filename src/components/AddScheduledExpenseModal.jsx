@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import { expenseCategories } from '../data/constants';
 import CategorySelector from './CategorySelector';
+import * as Icons from 'lucide-react';
 
 const FormInput = ({ id, label, ...props }) => (
     <div>
@@ -29,11 +29,11 @@ const FormSelect = ({ id, label, children, ...props }) => (
     </div>
 );
 
-const AddScheduledExpenseModal = ({ isOpen, onClose, onSave, members, cajas }) => {
+const AddScheduledExpenseModal = ({ isOpen, onClose, onSave, members, cajas, expenseCategories, categoryIconMap }) => {
   const getInitialState = () => ({
     description: '',
     amount: '',
-    category: expenseCategories[0].name,
+    category: expenseCategories[0]?.name || '',
     day_of_month: '15',
     member_id: members[0]?.id || '',
     caja_id: cajas[0]?.id || '',
@@ -65,6 +65,11 @@ const AddScheduledExpenseModal = ({ isOpen, onClose, onSave, members, cajas }) =
     setFormData(getInitialState());
   };
 
+  const categoriesWithIcons = expenseCategories.map(cat => ({
+    ...cat,
+    icon: categoryIconMap[cat.name] || Icons.Tag,
+  }));
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 z-40 flex justify-center items-center p-4 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-lg m-4 relative transform transition-all" onClick={e => e.stopPropagation()}>
@@ -82,7 +87,7 @@ const AddScheduledExpenseModal = ({ isOpen, onClose, onSave, members, cajas }) =
             </div>
             <CategorySelector
               label="Categoría"
-              categories={expenseCategories}
+              categories={categoriesWithIcons}
               selectedCategory={formData.category}
               onSelect={handleCategoryChange}
             />
