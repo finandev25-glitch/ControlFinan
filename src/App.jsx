@@ -110,7 +110,7 @@ function App() {
     console.log("Seeding complete.");
   };
 
-  const handleAddTransactions = async (newTransactions) => {
+  const handleAddTransactions = async (newTransactions, isTransfer = false, transferId = null) => {
     const transactionsToAdd = Array.isArray(newTransactions) ? newTransactions : [newTransactions];
     
     const supabaseTransactions = transactionsToAdd.map(t => ({
@@ -120,7 +120,8 @@ function App() {
       caja_id: t.cajaId,
       type: t.type,
       category: t.category,
-      amount: t.amount
+      amount: t.amount,
+      transfer_id: isTransfer ? transferId : null,
     }));
 
     const { data, error } = await supabase.from('transactions').insert(supabaseTransactions).select();
@@ -133,6 +134,85 @@ function App() {
           memberName: members.find(m => m.id === tx.member_id)?.name || 'N/A'
       }));
       setTransactions(prev => [...newTxsWithDetails, ...prev].sort((a, b) => new Date(b.date) - new Date(a.date)));
+    }
+  };
+
+  const handleUpdateTransaction = async (transactionId, updatedData) => {
+    if (updatedData.isTransferEdit) {
+      const { originalTransferId, newTransactions } = updatedData;
+  
+      // 1. Delete the old transfer pair from DB
+      const { error: deleteError } = await supabase
+        .from('transactions')
+        .delete()
+        .eq('transfer_id', originalTransferId);
+  
+      if (deleteError) {
+        console.error('Error deleting old transfer during update:', deleteError);
+        return;
+      }
+  
+      // Remove from local state BEFORE adding new ones
+      setTransactions(prev => prev.filter(t => t.transfer_id !== originalTransferId));
+  
+      // 2. Add the new transfer pair to DB and state, re-using the original transfer ID
+      await handleAddTransactions(newTransactions, true, originalTransferId);
+  
+    } else { // It's a simple transaction edit
+      const supabaseData = {
+        date: updatedData.date,
+        description: updatedData.description,
+        member_id: updatedData.memberId,
+        caja_id: updatedData.cajaId,
+        type: updatedData.type,
+        category: updatedData.category,
+        amount: updatedData.amount
+      };
+    
+      const { data, error } = await supabase
+        .from('transactions')
+        .update(supabaseData)
+        .eq('id', transactionId)
+        .select();
+    
+      if (error) {
+        console.error('Error updating transaction:', error);
+      } else if (data && data.length > 0) {
+        const updatedTx = data[0];
+        setTransactions(prev => prev.map(t => 
+          t.id === transactionId 
+          ? { ...updatedTx, memberName: members.find(m => m.id === updatedTx.member_id)?.name } 
+          : t
+        ));
+      }
+    }
+  };
+  
+  const handleDeleteTransaction = async (transaction) => {
+    if (transaction.transfer_id) {
+      // It's a transfer, delete both parts
+      const { error } = await supabase
+        .from('transactions')
+        .delete()
+        .eq('transfer_id', transaction.transfer_id);
+
+      if (error) {
+        console.error('Error deleting transfer:', error);
+      } else {
+        setTransactions(prev => prev.filter(t => t.transfer_id !== transaction.transfer_id));
+      }
+    } else {
+      // It's a single transaction
+      const { error } = await supabase
+        .from('transactions')
+        .delete()
+        .eq('id', transaction.id);
+      
+      if (error) {
+        console.error('Error deleting transaction:', error);
+      } else {
+        setTransactions(prev => prev.filter(t => t.id !== transaction.id));
+      }
     }
   };
 
@@ -409,7 +489,6 @@ function App() {
         onReviewExpense={handleOpenConfirmModal}
         members={members}
         cajas={cajas}
-        categories={categories}
       >
         <Routes>
           <Route 
@@ -428,7 +507,7 @@ function App() {
           />
           <Route 
             path="/miembros" 
-            element={<MembersPage transactions={transactions} onAddTransactions={handleAddTransactions} cajas={cajas} members={members} onAddMember={handleAddMember} onDeleteMember={handleDeleteMember} categories={categories} />} 
+            element={<MembersPage transactions={transactions} onAddTransactions={handleAddTransactions} onUpdateTransaction={handleUpdateTransaction} onDeleteTransaction={handleDeleteTransaction} cajas={cajas} members={members} onAddMember={handleAddMember} onDeleteMember={handleDeleteMember} categories={categories} />} 
           />
           <Route 
             path="/cajas" 

@@ -3,6 +3,7 @@ import ToggleSwitch from './ToggleSwitch';
 import CategorySelector from './CategorySelector';
 import { CalendarDays, Clock } from 'lucide-react';
 import { format } from 'date-fns';
+import { faker } from '@faker-js/faker';
 
 const FormSelect = ({ id, label, children, ...props }) => (
     <div>
@@ -18,8 +19,10 @@ const FormSelect = ({ id, label, children, ...props }) => (
     </div>
 );
 
-const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas, incomeCategories, expenseCategories, categoryIconMap }) => {
-  const getInitialFormState = () => {
+const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas, incomeCategories, expenseCategories, categoryIconMap, transactionToEdit, transactions }) => {
+  const isEditing = !!transactionToEdit;
+
+  const getNewFormState = () => {
     const now = new Date();
     const initialMemberId = selectedMemberId || members[0]?.id || '';
     const availableCajas = cajas.filter(c => String(c.member_id) === String(initialMemberId) || c.member_id === null);
@@ -39,11 +42,60 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas,
     };
   };
 
-  const [formData, setFormData] = useState(getInitialFormState());
+  const getInitialFormState = (editingTx) => {
+    if (editingTx) {
+      if (editingTx.transfer_id) {
+        const pair = transactions.find(t => t.transfer_id === editingTx.transfer_id && t.id !== editingTx.id);
+        if (!pair) {
+          console.error("Could not find pair for transfer edit");
+          return getNewFormState();
+        }
+
+        const expensePart = editingTx.type === 'Gasto' ? editingTx : pair;
+        const incomePart = editingTx.type === 'Ingreso' ? editingTx : pair;
+
+        const isInternal = String(expensePart.member_id) === String(incomePart.member_id);
+        
+        return {
+          description: expensePart.description.startsWith('Transferencia a') || expensePart.description.startsWith('Retiro a') ? '' : expensePart.description,
+          amount: expensePart.amount,
+          type: isInternal ? 'Interna' : 'Transferencia',
+          memberId: '',
+          cajaId: '',
+          category: 'Transferencia',
+          date: format(new Date(editingTx.date), 'yyyy-MM-dd'),
+          time: format(new Date(editingTx.date), 'HH:mm'),
+          fromMemberId: expensePart.member_id,
+          toMemberId: incomePart.member_id,
+          fromCajaId: expensePart.caja_id,
+          toCajaId: incomePart.caja_id,
+        };
+      } else { // It's a simple Ingreso/Gasto
+        const txDate = new Date(editingTx.date);
+        return {
+          description: editingTx.description,
+          amount: editingTx.amount,
+          type: editingTx.type,
+          memberId: editingTx.member_id,
+          cajaId: editingTx.caja_id,
+          category: editingTx.category,
+          date: format(txDate, 'yyyy-MM-dd'),
+          time: format(txDate, 'HH:mm'),
+          fromMemberId: '',
+          toMemberId: '',
+          fromCajaId: '',
+          toCajaId: '',
+        };
+      }
+    }
+    return getNewFormState();
+  };
+
+  const [formData, setFormData] = useState(getInitialFormState(transactionToEdit));
 
   useEffect(() => {
-    setFormData(getInitialFormState());
-  }, [selectedMemberId, members, cajas]);
+    setFormData(getInitialFormState(transactionToEdit));
+  }, [transactionToEdit, selectedMemberId, members, cajas, transactions]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -52,7 +104,7 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas,
 
   const handleTypeChange = (type) => {
     setFormData(prev => ({
-      ...getInitialFormState(),
+      ...getNewFormState(),
       type,
       category: type === 'Ingreso' ? incomeCategories[0]?.name : expenseCategories[0]?.name,
     }));
@@ -68,18 +120,72 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas,
       alert('Por favor, ingresa un monto.');
       return;
     }
-    if (formData.type === 'Transferencia' && formData.fromMemberId === formData.toMemberId) {
-      alert('El miembro de origen y destino no pueden ser el mismo.');
-      return;
-    }
-    if (formData.type === 'Interna' && formData.fromCajaId === formData.toCajaId) {
-      alert('La caja de origen y destino no pueden ser la misma.');
-      return;
+    
+    const transactionDate = new Date(`${formData.date}T${formData.time}`);
+    const amount = parseFloat(formData.amount);
+
+    // Handle transfer creation or edit
+    if (formData.type === 'Transferencia' || formData.type === 'Interna') {
+        if (formData.fromCajaId === formData.toCajaId) {
+            alert('La caja de origen y destino no pueden ser la misma.');
+            return;
+        }
+        
+        const fromCaja = cajas.find(c => String(c.id) === String(formData.fromCajaId));
+        const toCaja = cajas.find(c => String(c.id) === String(formData.toCajaId));
+        const fromMemberId = formData.type === 'Transferencia' ? formData.fromMemberId : fromCaja?.member_id;
+        const toMemberId = formData.type === 'Transferencia' ? formData.toMemberId : toCaja?.member_id;
+
+        const expenseTx = {
+            date: transactionDate,
+            description: formData.description || `${formData.type === 'Interna' ? 'Retiro a' : 'Transferencia a'} ${toCaja.name}`,
+            memberId: fromMemberId,
+            cajaId: formData.fromCajaId,
+            type: 'Gasto',
+            category: formData.type === 'Interna' ? 'Transferencia Interna' : 'Transferencia',
+            amount: amount,
+        };
+
+        const incomeTx = {
+            date: transactionDate,
+            description: formData.description || `${formData.type === 'Interna' ? 'Depósito de' : 'Transferencia de'} ${fromCaja.name}`,
+            memberId: toMemberId,
+            cajaId: formData.toCajaId,
+            type: 'Ingreso',
+            category: formData.type === 'Interna' ? 'Transferencia Interna' : 'Transferencia',
+            amount: amount,
+        };
+
+        if (isEditing && transactionToEdit.transfer_id) {
+            const payload = {
+                isTransferEdit: true,
+                originalTransferId: transactionToEdit.transfer_id,
+                newTransactions: [expenseTx, incomeTx]
+            };
+            onSave(transactionToEdit.id, payload);
+        } else {
+            const transferId = faker.string.uuid();
+            onSave([expenseTx, incomeTx], null, true, transferId);
+        }
+        return;
     }
 
-    const transactionDate = new Date(`${formData.date}T${formData.time}`);
-    const dataToSave = { ...formData, date: transactionDate };
-    onSave(dataToSave);
+    // Handle simple transaction creation or edit
+    const dataToSave = {
+        date: transactionDate,
+        description: formData.description,
+        memberId: formData.memberId,
+        cajaId: formData.cajaId,
+        type: formData.type,
+        amount: amount,
+        category: formData.category,
+    };
+
+    if (isEditing) {
+        onSave(transactionToEdit.id, dataToSave);
+    } else {
+        onSave([dataToSave]);
+    }
   };
   
   const categoriesForSelector = formData.type === 'Ingreso' ? incomeCategories : expenseCategories;
@@ -106,6 +212,7 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas,
 
   return (
     <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-lg">
+      <h2 className="text-xl font-bold text-slate-800 mb-4">{isEditing ? 'Editar Transacción' : 'Añadir Transacción'}</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         
         <div>
@@ -191,7 +298,7 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas,
 
         <div>
           <label htmlFor="description" className="block text-sm font-medium text-slate-700 mb-1">Descripción</label>
-          <input type="text" name="description" id="description" value={formData.description} onChange={handleInputChange} className="block w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm" required />
+          <input type="text" name="description" id="description" value={formData.description} onChange={handleInputChange} className="block w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm" />
         </div>
 
         <div className="pt-2 flex flex-col items-center gap-3">
@@ -199,7 +306,7 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas,
             type="submit"
             className="w-full px-4 py-3 text-base font-semibold text-white bg-primary-600 border border-transparent rounded-full shadow-sm hover:bg-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-500"
           >
-            Agregar
+            {isEditing ? 'Actualizar' : 'Agregar'}
           </button>
           <button
             type="button"

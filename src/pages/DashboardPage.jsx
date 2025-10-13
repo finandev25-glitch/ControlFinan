@@ -7,6 +7,7 @@ import RecentTransactionsList from '../components/RecentTransactionsList';
 import BalanceSummaryCard from '../components/BalanceSummaryCard';
 import ProjectedBalanceCard from '../components/ProjectedBalanceCard';
 import ProjectedExpensesModal from '../components/ProjectedExpensesModal';
+import TransferDetailModal from '../components/TransferDetailModal';
 import { Users, Tag } from 'lucide-react';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
 import * as Icons from 'lucide-react';
@@ -14,6 +15,8 @@ import * as Icons from 'lucide-react';
 const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpenses, categories, selectedYear, selectedMonth, onYearChange, onMonthChange }) => {
   const [selectedMemberId, setSelectedMemberId] = useState('all');
   const [isProjectedExpensesModalOpen, setProjectedExpensesModalOpen] = useState(false);
+  const [isTransferModalOpen, setTransferModalOpen] = useState(false);
+  const [transferModalData, setTransferModalData] = useState({ title: '', transactions: [] });
 
   const categoryIconMap = useMemo(() => {
     return categories.reduce((acc, cat) => {
@@ -30,6 +33,7 @@ const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpense
     budgetOverviewData,
     recentTransactionsData,
     projectedBalanceData,
+    netTransfersDetails,
   } = useMemo(() => {
     const selectedDate = new Date(selectedYear, selectedMonth);
     const dateRange = {
@@ -48,15 +52,26 @@ const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpense
     const currentTransactions = filterTransactions(transactions, dateRange.from, dateRange.to, selectedMemberId);
 
     const calculateSummary = (txs) => {
-      const income = txs.filter(t => t.type === 'Ingreso').reduce((s, t) => s + t.amount, 0);
-      const expenses = txs.filter(t => t.type === 'Gasto').reduce((s, t) => s + t.amount, 0);
-      return { totalIncome: income, totalExpenses: expenses, balance: income - expenses };
+      const income = txs.filter(t => t.type === 'Ingreso' && t.category !== 'Transferencia' && t.category !== 'Transferencia Interna').reduce((s, t) => s + t.amount, 0);
+      const expenses = txs.filter(t => t.type === 'Gasto' && t.category !== 'Transferencia' && t.category !== 'Transferencia Interna').reduce((s, t) => s + t.amount, 0);
+      
+      const transfersReceived = txs.filter(t => t.type === 'Ingreso' && t.category === 'Transferencia').reduce((s, t) => s + t.amount, 0);
+      const transfersSent = txs.filter(t => t.type === 'Gasto' && t.category === 'Transferencia').reduce((s, t) => s + t.amount, 0);
+
+      const netTransfers = transfersReceived - transfersSent;
+
+      return { 
+        totalIncome: income, 
+        totalExpenses: expenses, 
+        netTransfers: netTransfers,
+        balance: income - expenses + netTransfers,
+      };
     };
 
     const currentSummary = calculateSummary(currentTransactions);
 
     const expenseByCategory = currentTransactions
-      .filter(t => t.type === 'Gasto' && t.category)
+      .filter(t => t.type === 'Gasto' && t.category && t.category !== 'Transferencia' && t.category !== 'Transferencia Interna')
       .reduce((acc, t) => {
         acc[t.category] = (acc[t.category] || 0) + t.amount;
         return acc;
@@ -67,8 +82,8 @@ const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpense
     const dailyData = currentTransactions.reduce((acc, t) => {
         const date = new Date(t.date).toISOString().split('T')[0];
         if (!acc[date]) acc[date] = { income: 0, expense: 0 };
-        if (t.type === 'Ingreso') acc[date].income += t.amount;
-        else if (t.type === 'Gasto') acc[date].expense += t.amount;
+        if (t.type === 'Ingreso' && t.category !== 'Transferencia' && t.category !== 'Transferencia Interna') acc[date].income += t.amount;
+        else if (t.type === 'Gasto' && t.category !== 'Transferencia' && t.category !== 'Transferencia Interna') acc[date].expense += t.amount;
         return acc;
     }, {});
 
@@ -133,6 +148,8 @@ const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpense
     const projectedExpensesSum = projectedExpensesWithDetails.reduce((sum, exp) => sum + exp.amount, 0);
     const availableBalance = currentSummary.balance - projectedExpensesSum;
     
+    const netTransfersDetails = currentTransactions.filter(t => t.category === 'Transferencia');
+
     return {
       summary: currentSummary,
       cashFlowData: cashFlow,
@@ -149,8 +166,17 @@ const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpense
         availableBalance: availableBalance,
         details: projectedExpensesWithDetails,
       },
+      netTransfersDetails,
     };
   }, [transactions, scheduledExpenses, selectedYear, selectedMonth, selectedMemberId, members, budgets, cajas, categories, categoryIconMap]);
+
+  const handleOpenTransferDetails = () => {
+    setTransferModalData({
+      title: 'Detalle de Transferencias Netas',
+      transactions: netTransfersDetails,
+    });
+    setTransferModalOpen(true);
+  };
 
   return (
     <>
@@ -180,7 +206,10 @@ const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpense
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <BalanceSummaryCard summary={summary} />
+          <BalanceSummaryCard 
+            summary={summary} 
+            onDetailsClick={handleOpenTransferDetails} 
+          />
           <ProjectedBalanceCard 
             data={projectedBalanceData} 
             onDetailsClick={() => setProjectedExpensesModalOpen(true)}
@@ -210,6 +239,13 @@ const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpense
         isOpen={isProjectedExpensesModalOpen}
         onClose={() => setProjectedExpensesModalOpen(false)}
         expenses={projectedBalanceData.details}
+      />
+      <TransferDetailModal
+        isOpen={isTransferModalOpen}
+        onClose={() => setTransferModalOpen(false)}
+        title={transferModalData.title}
+        transactions={transferModalData.transactions}
+        members={members}
       />
     </>
   );

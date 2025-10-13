@@ -4,16 +4,20 @@ import TransactionCard from '../components/TransactionCard';
 import { Filter, PlusCircle, Trash2, Tag } from 'lucide-react';
 import AddMemberModal from '../components/AddMemberModal';
 import DeleteMemberModal from '../components/DeleteMemberModal';
+import DeleteTransactionModal from '../components/DeleteTransactionModal';
 import * as Icons from 'lucide-react';
 
 const formatCurrency = (amount) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(amount);
 
-const MembersPage = ({ transactions, onAddTransactions, cajas, members, onAddMember, onDeleteMember, categories }) => {
+const MembersPage = ({ transactions, onAddTransactions, onUpdateTransaction, onDeleteTransaction, cajas, members, onAddMember, onDeleteMember, categories }) => {
   const [selectedMemberId, setSelectedMemberId] = useState(members[0]?.id);
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [memberToDelete, setMemberToDelete] = useState(null);
+  const [transactionToEdit, setTransactionToEdit] = useState(null);
+  const [transactionToDelete, setTransactionToDelete] = useState(null);
+  const [isDeleteTransactionModalOpen, setDeleteTransactionModalOpen] = useState(false);
 
   const incomeCategories = useMemo(() => categories.filter(c => c.type === 'Ingreso'), [categories]);
   const expenseCategories = useMemo(() => categories.filter(c => c.type === 'Gasto'), [categories]);
@@ -44,74 +48,15 @@ const MembersPage = ({ transactions, onAddTransactions, cajas, members, onAddMem
       });
   }, [transactions, selectedMemberId, members]);
   
-  const handleSaveTransaction = (data) => {
-    const transactionDate = data.date;
-    const amount = parseFloat(data.amount);
-
-    if (data.type === 'Transferencia') {
-        const fromCaja = cajas.find(c => String(c.id) === String(data.fromCajaId));
-        const toCaja = cajas.find(c => String(c.id) === String(data.toCajaId));
-        
-        const expenseTx = {
-            date: transactionDate,
-            description: data.description || `Transferencia a ${toCaja.name}`,
-            memberId: data.fromMemberId,
-            cajaId: data.fromCajaId,
-            type: 'Gasto',
-            category: 'Transferencia',
-            amount: amount,
-        };
-
-        const incomeTx = {
-            date: transactionDate,
-            description: data.description || `Transferencia de ${fromCaja.name}`,
-            memberId: data.toMemberId,
-            cajaId: data.toCajaId,
-            type: 'Ingreso',
-            category: 'Transferencia',
-            amount: amount,
-        };
-        onAddTransactions([expenseTx, incomeTx]);
-
-    } else if (data.type === 'Interna') {
-        const fromCaja = cajas.find(c => String(c.id) === String(data.fromCajaId));
-        const toCaja = cajas.find(c => String(c.id) === String(data.toCajaId));
-        
-        const expenseTx = {
-            date: transactionDate,
-            description: data.description || `Retiro a ${toCaja.name}`,
-            memberId: fromCaja.member_id,
-            cajaId: data.fromCajaId,
-            type: 'Gasto',
-            category: 'Transferencia Interna',
-            amount: amount,
-        };
-
-        const incomeTx = {
-            date: transactionDate,
-            description: data.description || `Depósito desde ${fromCaja.name}`,
-            memberId: toCaja.member_id,
-            cajaId: data.toCajaId,
-            type: 'Ingreso',
-            category: 'Transferencia Interna',
-            amount: amount,
-        };
-        onAddTransactions([expenseTx, incomeTx]);
-
-    } else {
-      const transactionToAdd = {
-        date: transactionDate,
-        description: data.description,
-        memberId: data.memberId,
-        cajaId: data.cajaId,
-        type: data.type,
-        amount: amount,
-        category: data.category,
-      };
-      onAddTransactions([transactionToAdd]);
+  const handleSaveTransaction = React.useCallback((arg1, arg2, arg3, arg4) => {
+    if (Array.isArray(arg1)) { // It's a creation
+        onAddTransactions(arg1, arg3, arg4);
+    } else { // It's an update
+        onUpdateTransaction(arg1, arg2);
     }
     setIsFormVisible(false);
-  };
+    setTransactionToEdit(null);
+  }, [onAddTransactions, onUpdateTransaction]);
 
   const handleSaveMember = (data) => {
     onAddMember(data);
@@ -133,6 +78,29 @@ const MembersPage = ({ transactions, onAddTransactions, cajas, members, onAddMem
     }
     setIsDeleteModalOpen(false);
     setMemberToDelete(null);
+  };
+
+  const handleEditTransaction = React.useCallback((transaction) => {
+    setTransactionToEdit(transaction);
+    setIsFormVisible(true);
+  }, []);
+
+  const handleDeleteTransactionRequest = React.useCallback((transaction) => {
+    setTransactionToDelete(transaction);
+    setDeleteTransactionModalOpen(true);
+  }, []);
+
+  const handleConfirmDeleteTransaction = () => {
+    if (transactionToDelete) {
+      onDeleteTransaction(transactionToDelete);
+    }
+    setTransactionToDelete(null);
+    setDeleteTransactionModalOpen(false);
+  };
+
+  const handleCloseForm = () => {
+    setIsFormVisible(false);
+    setTransactionToEdit(null);
   };
 
   return (
@@ -191,11 +159,13 @@ const MembersPage = ({ transactions, onAddTransactions, cajas, members, onAddMem
                   onSave={handleSaveTransaction}
                   members={members.filter(m => m.role !== 'Dependiente')}
                   selectedMemberId={selectedMemberId}
-                  onClose={() => setIsFormVisible(false)}
+                  onClose={handleCloseForm}
                   cajas={cajas}
                   incomeCategories={incomeCategories}
                   expenseCategories={expenseCategories}
                   categoryIconMap={categoryIconMap}
+                  transactionToEdit={transactionToEdit}
+                  transactions={transactions}
                 />
               </div>
             ) : (
@@ -215,7 +185,14 @@ const MembersPage = ({ transactions, onAddTransactions, cajas, members, onAddMem
                 <div className="space-y-3">
                   {selectedMemberTransactions.length > 0 ? (
                     selectedMemberTransactions.map(t => (
-                      <TransactionCard key={`${t.id}-${t.date}`} transaction={t} cajas={cajas} categoryIconMap={categoryIconMap} />
+                      <TransactionCard 
+                        key={`${t.id}-${t.date}`} 
+                        transaction={t} 
+                        cajas={cajas} 
+                        categoryIconMap={categoryIconMap} 
+                        onEdit={handleEditTransaction}
+                        onDelete={handleDeleteTransactionRequest}
+                      />
                     ))
                   ) : (
                     <div className="text-center py-10 rounded-lg bg-slate-50 border-2 border-dashed border-slate-200">
@@ -240,6 +217,11 @@ const MembersPage = ({ transactions, onAddTransactions, cajas, members, onAddMem
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleDeleteConfirm}
         memberName={memberToDelete?.name}
+      />
+      <DeleteTransactionModal
+        isOpen={isDeleteTransactionModalOpen}
+        onClose={() => setDeleteTransactionModalOpen(false)}
+        onConfirm={handleConfirmDeleteTransaction}
       />
     </>
   );
