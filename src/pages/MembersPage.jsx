@@ -16,8 +16,8 @@ const MembersPage = ({ transactions, onAddTransactions, cajas, members, onAddMem
 
   const memberSummary = useMemo(() => {
     return members.map(member => {
-      const income = transactions.filter(t => t.miembro_id === member.id && t.tipo === 'Ingreso').reduce((s, t) => s + t.monto, 0);
-      const expenses = transactions.filter(t => t.miembro_id === member.id && t.tipo === 'Gasto').reduce((s, t) => s + t.monto, 0);
+      const income = transactions.filter(t => t.member_id === member.id && t.type === 'Ingreso').reduce((s, t) => s + t.amount, 0);
+      const expenses = transactions.filter(t => t.member_id === member.id && t.type === 'Gasto').reduce((s, t) => s + t.amount, 0);
       return { ...member, balance: income - expenses };
     });
   }, [transactions, members]);
@@ -25,9 +25,9 @@ const MembersPage = ({ transactions, onAddTransactions, cajas, members, onAddMem
   const selectedMemberTransactions = useMemo(() => {
     if (!selectedMemberId) return [];
     return transactions
-      .filter(t => t.miembro_id === selectedMemberId)
+      .filter(t => t.member_id === selectedMemberId)
       .map(t => {
-        const member = members.find(m => m.id === t.miembro_id);
+        const member = members.find(m => m.id === t.member_id);
         return { ...t, memberAvatar: member?.avatar };
       });
   }, [transactions, selectedMemberId, members]);
@@ -43,7 +43,7 @@ const MembersPage = ({ transactions, onAddTransactions, cajas, members, onAddMem
         const expenseTx = {
             date: transactionDate,
             description: data.description || `Transferencia a ${toCaja.name}`,
-            memberId: parseInt(data.fromMemberId),
+            memberId: data.fromMemberId,
             cajaId: fromCaja.id,
             type: 'Gasto',
             category: 'Transferencia',
@@ -53,7 +53,7 @@ const MembersPage = ({ transactions, onAddTransactions, cajas, members, onAddMem
         const incomeTx = {
             date: transactionDate,
             description: data.description || `Transferencia de ${fromCaja.name}`,
-            memberId: parseInt(data.toMemberId),
+            memberId: data.toMemberId,
             cajaId: toCaja.id,
             type: 'Ingreso',
             category: 'Transferencia',
@@ -90,7 +90,7 @@ const MembersPage = ({ transactions, onAddTransactions, cajas, members, onAddMem
       const transactionToAdd = {
         date: transactionDate,
         description: data.description,
-        memberId: parseInt(data.memberId),
+        memberId: data.memberId,
         cajaId: parseInt(data.cajaId),
         type: data.type,
         amount: amount,
@@ -200,7 +200,7 @@ const MembersPage = ({ transactions, onAddTransactions, cajas, members, onAddMem
                 <div className="space-y-3">
                   {selectedMemberTransactions.length > 0 ? (
                     selectedMemberTransactions.map(t => (
-                      <TransactionCard key={`${t.id}-${t.fecha}`} transaction={t} cajas={cajas} />
+                      <TransactionCard key={`${t.id}-${t.date}`} transaction={t} cajas={cajas} />
                     ))
                   ) : (
                     <div className="text-center py-10 rounded-lg bg-slate-50 border-2 border-dashed border-slate-200">

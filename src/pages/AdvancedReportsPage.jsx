@@ -31,17 +31,17 @@ const AdvancedReportsPage = ({ transactions, members, selectedYear, selectedMont
 
     const calculateStats = (startDate, endDate) => {
       const filtered = transactions.filter(t => {
-        const txDate = new Date(t.fecha);
+        const txDate = new Date(t.date);
         return txDate >= startDate && txDate <= endDate;
       });
 
-      const income = filtered.filter(t => t.tipo === 'Ingreso').reduce((sum, t) => sum + t.monto, 0);
-      const expenses = filtered.filter(t => t.tipo === 'Gasto').reduce((sum, t) => sum + t.monto, 0);
+      const income = filtered.filter(t => t.type === 'Ingreso').reduce((sum, t) => sum + t.amount, 0);
+      const expenses = filtered.filter(t => t.type === 'Gasto').reduce((sum, t) => sum + t.amount, 0);
       
       const expenseDistribution = filtered
-        .filter(t => t.tipo === 'Gasto' && t.categoria)
+        .filter(t => t.type === 'Gasto' && t.category)
         .reduce((acc, t) => {
-          acc[t.categoria] = (acc[t.categoria] || 0) + t.monto;
+          acc[t.category] = (acc[t.category] || 0) + t.amount;
           return acc;
         }, {});
       
@@ -58,12 +58,12 @@ const AdvancedReportsPage = ({ transactions, members, selectedYear, selectedMont
 
   const memberFilteredExpenses = useMemo(() => {
     const filtered = transactions.filter(t => {
-      const memberMatch = selectedMemberId === 'all' || t.miembro_id === parseInt(selectedMemberId);
-      return t.tipo === 'Gasto' && t.categoria && memberMatch;
+      const memberMatch = selectedMemberId === 'all' || t.member_id === parseInt(selectedMemberId);
+      return t.type === 'Gasto' && t.category && memberMatch;
     });
 
     const expenseDistribution = filtered.reduce((acc, t) => {
-        acc[t.categoria] = (acc[t.categoria] || 0) + t.monto;
+        acc[t.category] = (acc[t.category] || 0) + t.amount;
         return acc;
     }, {});
 
@@ -72,13 +72,13 @@ const AdvancedReportsPage = ({ transactions, members, selectedYear, selectedMont
 
   const categoryFilteredExpenses = useMemo(() => {
     return transactions.filter(t => {
-      const categoryMatch = selectedCategoryId === 'all' || t.categoria === selectedCategoryId;
-      return t.tipo === 'Gasto' && categoryMatch;
+      const categoryMatch = selectedCategoryId === 'all' || t.category === selectedCategoryId;
+      return t.type === 'Gasto' && categoryMatch;
     });
   }, [transactions, selectedCategoryId]);
 
   const timelineChartData = useMemo(() => {
-    const baseTransactions = transactions.filter(t => t.tipo === 'Gasto' && t.categoria === timelineCategory);
+    const baseTransactions = transactions.filter(t => t.type === 'Gasto' && t.category === timelineCategory);
     const now = new Date();
     let data;
     let result = { labels: [], amounts: [], dateRanges: [] };
@@ -88,13 +88,13 @@ const AdvancedReportsPage = ({ transactions, members, selectedYear, selectedMont
       const endOfToday = endOfDay(now);
       
       const yearlyTransactions = baseTransactions.filter(t => {
-          const txDate = new Date(t.fecha);
+          const txDate = new Date(t.date);
           return txDate >= startOfCurrentYear && txDate <= endOfToday;
       });
 
       data = yearlyTransactions.reduce((acc, t) => {
-        const date = startOfDay(new Date(t.fecha)).toISOString();
-        acc[date] = (acc[date] || 0) + t.monto;
+        const date = startOfDay(new Date(t.date)).toISOString();
+        acc[date] = (acc[date] || 0) + t.amount;
         return acc;
       }, {});
       const dateMap = new Map(Object.entries(data));
@@ -110,10 +110,10 @@ const AdvancedReportsPage = ({ transactions, members, selectedYear, selectedMont
     if (timelineInterval === 'Semanal') {
         const startOfCurrentYear = startOfYear(now);
         const endOfToday = endOfDay(now);
-        const weeklyTransactions = baseTransactions.filter(t => new Date(t.fecha) >= startOfCurrentYear && new Date(t.fecha) <= endOfToday);
+        const weeklyTransactions = baseTransactions.filter(t => new Date(t.date) >= startOfCurrentYear && new Date(t.date) <= endOfToday);
         data = weeklyTransactions.reduce((acc, t) => {
-            const weekStart = startOfWeek(new Date(t.fecha), { weekStartsOn: 1 }).toISOString();
-            acc[weekStart] = (acc[weekStart] || 0) + t.monto;
+            const weekStart = startOfWeek(new Date(t.date), { weekStartsOn: 1 }).toISOString();
+            acc[weekStart] = (acc[weekStart] || 0) + t.amount;
             return acc;
         }, {});
         const dateMap = new Map(Object.entries(data));
@@ -133,10 +133,10 @@ const AdvancedReportsPage = ({ transactions, members, selectedYear, selectedMont
 
     if (timelineInterval === 'Mensual') {
       const startOfCurrentYear = startOfYear(now);
-      const monthlyTransactions = baseTransactions.filter(t => new Date(t.fecha) >= startOfCurrentYear);
+      const monthlyTransactions = baseTransactions.filter(t => new Date(t.date) >= startOfCurrentYear);
       data = monthlyTransactions.reduce((acc, t) => {
-        const monthStart = startOfMonth(new Date(t.fecha)).toISOString();
-        acc[monthStart] = (acc[monthStart] || 0) + t.monto;
+        const monthStart = startOfMonth(new Date(t.date)).toISOString();
+        acc[monthStart] = (acc[monthStart] || 0) + t.amount;
         return acc;
       }, {});
       const dateMap = new Map(Object.entries(data));
@@ -163,12 +163,12 @@ const AdvancedReportsPage = ({ transactions, members, selectedYear, selectedMont
 
     const calculateStatsForPeriod = (memberId, start, end) => {
         const memberTransactions = transactions.filter(t => 
-            t.miembro_id === memberId && 
-            new Date(t.fecha) >= start && 
-            new Date(t.fecha) <= end
+            t.member_id === memberId && 
+            new Date(t.date) >= start && 
+            new Date(t.date) <= end
         );
-        const income = memberTransactions.filter(t => t.tipo === 'Ingreso').reduce((sum, t) => sum + t.monto, 0);
-        const expenses = memberTransactions.filter(t => t.tipo === 'Gasto').reduce((sum, t) => sum + t.monto, 0);
+        const income = memberTransactions.filter(t => t.type === 'Ingreso').reduce((sum, t) => sum + t.amount, 0);
+        const expenses = memberTransactions.filter(t => t.type === 'Gasto').reduce((sum, t) => sum + t.amount, 0);
         return { totalIncome: income, totalExpenses: expenses };
     };
 
@@ -183,9 +183,9 @@ const AdvancedReportsPage = ({ transactions, members, selectedYear, selectedMont
 
   const incomeBreakdownData = useMemo(() => {
       const incomeByCategory = transactions
-          .filter(t => t.tipo === 'Ingreso' && t.categoria !== 'Transferencia')
+          .filter(t => t.type === 'Ingreso' && t.category !== 'Transferencia')
           .reduce((acc, t) => {
-              acc[t.categoria] = (acc[t.categoria] || 0) + t.monto;
+              acc[t.category] = (acc[t.category] || 0) + t.amount;
               return acc;
           }, {});
       
@@ -206,9 +206,9 @@ const AdvancedReportsPage = ({ transactions, members, selectedYear, selectedMont
     }
 
     const detailedTransactions = transactions.filter(t => {
-        const txDate = new Date(t.fecha);
-        return t.tipo === 'Gasto' &&
-               t.categoria === timelineCategory &&
+        const txDate = new Date(t.date);
+        return t.type === 'Gasto' &&
+               t.category === timelineCategory &&
                txDate >= start &&
                txDate <= end;
     });
@@ -216,7 +216,7 @@ const AdvancedReportsPage = ({ transactions, members, selectedYear, selectedMont
     setModalData({
         isOpen: true,
         title: title,
-        transactions: detailedTransactions.sort((a,b) => new Date(b.fecha) - new Date(a.fecha)),
+        transactions: detailedTransactions.sort((a,b) => new Date(b.date) - new Date(a.date)),
     });
   };
 

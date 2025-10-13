@@ -26,10 +26,10 @@ const ReportsPage = ({ transactions, cajas, members }) => {
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
-      const searchMatch = t.descripcion.toLowerCase().includes(searchTerm.toLowerCase());
-      const typeMatch = filterType === 'Todos' || t.tipo === filterType;
-      const memberMatch = filterMember === 'Todos' || t.miembro_id === parseInt(filterMember);
-      const categoryMatch = filterCategory === 'Todos' || t.categoria === filterCategory;
+      const searchMatch = t.description.toLowerCase().includes(searchTerm.toLowerCase());
+      const typeMatch = filterType === 'Todos' || t.type === filterType;
+      const memberMatch = filterMember === 'Todos' || t.member_id === parseInt(filterMember);
+      const categoryMatch = filterCategory === 'Todos' || t.category === filterCategory;
       const cajaMatch = filterCaja === 'Todos' || t.caja_id === parseInt(filterCaja);
       return searchMatch && typeMatch && memberMatch && categoryMatch && cajaMatch;
     });
@@ -127,14 +127,14 @@ const ReportsPage = ({ transactions, cajas, members }) => {
             <tbody className="bg-white divide-y divide-slate-200">
               {filteredTransactions.map((t) => (
                 <tr key={t.id} className="hover:bg-slate-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{t.descripcion}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{t.description}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{t.memberName}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{cajas.find(c => c.id === t.caja_id)?.name || 'N/A'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{formatDate(t.fecha)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm"><TypeBadge type={t.tipo} /></td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{t.categoria || 'N/A'}</td>
-                  <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-semibold ${t.tipo === 'Ingreso' ? 'text-green-600' : 'text-red-600'}`}>
-                    {t.tipo === 'Ingreso' ? '+' : '-'}{formatCurrency(t.monto)}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{formatDate(t.date)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm"><TypeBadge type={t.type} /></td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{t.category || 'N/A'}</td>
+                  <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-semibold ${t.type === 'Ingreso' ? 'text-green-600' : 'text-red-600'}`}>
+                    {t.type === 'Ingreso' ? '+' : '-'}{formatCurrency(t.amount)}
                   </td>
                 </tr>
               ))}

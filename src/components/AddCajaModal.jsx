@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { peruvianBanks } from '../data/mockData';
+import { peruvianBanks } from '../data/constants';
 
 const creatableCajaTypes = [
     'Cuenta Bancaria',
@@ -52,7 +52,7 @@ const AddCajaModal = ({ isOpen, onClose, onSave, members }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave({ ...formData, type, memberId: parseInt(formData.memberId) });
+    onSave({ ...formData, type, memberId: formData.memberId });
     onClose();
     setFormData({ memberId: members[0]?.id || '' });
     setType(creatableCajaTypes[0]);

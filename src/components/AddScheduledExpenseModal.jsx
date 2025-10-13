@@ -31,11 +31,11 @@ const FormSelect = ({ id, label, children, ...props }) => (
 
 const AddScheduledExpenseModal = ({ isOpen, onClose, onSave, members, cajas }) => {
   const getInitialState = () => ({
-    descripcion: '',
-    monto: '',
-    categoria: expenseCategories[0].name,
-    dia_del_mes: '15',
-    miembro_id: members[0]?.id || '',
+    description: '',
+    amount: '',
+    category: expenseCategories[0].name,
+    day_of_month: '15',
+    member_id: members[0]?.id || '',
     caja_id: cajas[0]?.id || '',
   });
 
@@ -49,16 +49,16 @@ const AddScheduledExpenseModal = ({ isOpen, onClose, onSave, members, cajas }) =
   };
 
   const handleCategoryChange = (categoryName) => {
-    setFormData(prev => ({ ...prev, categoria: categoryName }));
+    setFormData(prev => ({ ...prev, category: categoryName }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     onSave({
       ...formData,
-      monto: parseFloat(formData.monto) || 0,
-      dia_del_mes: parseInt(formData.dia_del_mes) || 1,
-      miembro_id: parseInt(formData.miembro_id),
+      amount: parseFloat(formData.amount) || 0,
+      day_of_month: parseInt(formData.day_of_month) || 1,
+      member_id: formData.member_id,
       caja_id: parseInt(formData.caja_id),
     });
     onClose();
@@ -75,19 +75,19 @@ const AddScheduledExpenseModal = ({ isOpen, onClose, onSave, members, cajas }) =
         <p className="text-slate-500 mb-6">Registra un gasto que se repite cada mes.</p>
         
         <form onSubmit={handleSubmit} className="space-y-4">
-            <FormInput id="description" name="descripcion" label="Descripción" placeholder="Ej: Suscripción a Spotify" value={formData.descripcion} onChange={handleInputChange} />
+            <FormInput id="description" name="description" label="Descripción" placeholder="Ej: Suscripción a Spotify" value={formData.description} onChange={handleInputChange} />
             <div className="grid grid-cols-2 gap-4">
-                <FormInput id="amount" name="monto" label="Monto (S/)" type="number" step="0.01" placeholder="50.00" value={formData.monto} onChange={handleInputChange} />
-                <FormInput id="dayOfMonth" name="dia_del_mes" label="Día de Pago (del mes)" type="number" min="1" max="31" placeholder="15" value={formData.dia_del_mes} onChange={handleInputChange} />
+                <FormInput id="amount" name="amount" label="Monto (S/)" type="number" step="0.01" placeholder="50.00" value={formData.amount} onChange={handleInputChange} />
+                <FormInput id="dayOfMonth" name="day_of_month" label="Día de Pago (del mes)" type="number" min="1" max="31" placeholder="15" value={formData.day_of_month} onChange={handleInputChange} />
             </div>
             <CategorySelector
               label="Categoría"
               categories={expenseCategories}
-              selectedCategory={formData.categoria}
+              selectedCategory={formData.category}
               onSelect={handleCategoryChange}
             />
             <div className="grid grid-cols-2 gap-4">
-                <FormSelect id="memberId" name="miembro_id" label="Miembro Responsable" value={formData.miembro_id} onChange={handleInputChange}>
+                <FormSelect id="memberId" name="member_id" label="Miembro Responsable" value={formData.member_id} onChange={handleInputChange}>
                     {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                 </FormSelect>
                 <FormSelect id="cajaId" name="caja_id" label="Caja de Origen" value={formData.caja_id} onChange={handleInputChange}>

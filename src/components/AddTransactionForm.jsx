@@ -23,6 +23,7 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas 
   const getInitialFormState = () => {
     const now = new Date();
     const initialMemberId = selectedMemberId || members[0]?.id || '';
+    const availableCajas = cajas.filter(c => c.member_id === initialMemberId || c.member_id === null);
     return {
       description: '',
       amount: '',
@@ -32,7 +33,7 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas 
       toMemberId: members.find(m => m.id !== initialMemberId)?.id || '',
       fromCajaId: '',
       toCajaId: '',
-      cajaId: '',
+      cajaId: availableCajas[0]?.id || '',
       category: incomeCategories[0].name,
       date: format(now, 'yyyy-MM-dd'),
       time: format(now, 'HH:mm'),
@@ -44,14 +45,6 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas 
   useEffect(() => {
     setFormData(getInitialFormState());
   }, [selectedMemberId, members, cajas]);
-
-  useEffect(() => {
-    // Auto-select first caja when member or type changes
-    const memberCajas = cajas.filter(c => c.member_id === parseInt(formData.memberId));
-    if (formData.type === 'Ingreso' || formData.type === 'Gasto') {
-      setFormData(prev => ({ ...prev, cajaId: memberCajas[0]?.id || '' }));
-    }
-  }, [formData.memberId, formData.type, cajas]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -95,10 +88,17 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas 
   const isInternalTransfer = formData.type === 'Interna';
   const isStandardTransaction = formData.type === 'Ingreso' || formData.type === 'Gasto';
 
-  const fromMemberCajas = cajas.filter(c => (c.type === 'Cuenta Bancaria' || c.type === 'Efectivo') && c.member_id === parseInt(formData.fromMemberId));
-  const toMemberCajas = cajas.filter(c => (c.type === 'Cuenta Bancaria' || c.type === 'Efectivo') && c.member_id === parseInt(formData.toMemberId));
+  const fromMemberCajas = cajas.filter(c => 
+    (c.type === 'Cuenta Bancaria' || c.type === 'Efectivo') && 
+    (c.member_id === formData.fromMemberId || c.member_id === null)
+  );
+  const toMemberCajas = cajas.filter(c => 
+    (c.type === 'Cuenta Bancaria' || c.type === 'Efectivo') && 
+    (c.member_id === formData.toMemberId || c.member_id === null)
+  );
   const bankAccounts = cajas.filter(c => c.type === 'Cuenta Bancaria');
   const cashBoxes = cajas.filter(c => c.type === 'Efectivo');
+  const standardCajas = cajas.filter(c => c.member_id === formData.memberId || c.member_id === null);
 
   return (
     <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-lg">
@@ -127,7 +127,7 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas 
               {members.map(member => <option key={member.id} value={member.id}>{member.name}</option>)}
             </FormSelect>
             <FormSelect id="cajaId" name="cajaId" label="Caja" value={formData.cajaId} onChange={handleInputChange}>
-               {cajas.filter(c => c.member_id === parseInt(formData.memberId) || c.type === 'Efectivo').map(caja => <option key={caja.id} value={caja.id}>{caja.name}</option>)}
+               {standardCajas.map(caja => <option key={caja.id} value={caja.id}>{caja.name}</option>)}
             </FormSelect>
           </>
         )}

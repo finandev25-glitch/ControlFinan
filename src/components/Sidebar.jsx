@@ -35,7 +35,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
       <aside className="hidden lg:flex lg:flex-col w-64 bg-primary-900 text-white p-4">
         <div className="flex items-center gap-3 mb-8 px-2">
           <PiggyBank className="h-10 w-10 text-white" />
-          <span className="text-2xl font-bold">FamilyFin</span>
+          <span className="text-2xl font-bold">MiSaldo</span>
         </div>
         <nav className="flex-1 space-y-2">
           {navLinks.map(link => (
@@ -69,7 +69,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
         </button>
         <div className="flex items-center gap-3 mb-8 px-2">
           <PiggyBank className="h-10 w-10 text-white" />
-          <span className="text-2xl font-bold">FamilyFin</span>
+          <span className="text-2xl font-bold">MiSaldo</span>
         </div>
         <nav className="flex-1 space-y-2">
           {navLinks.map(link => (

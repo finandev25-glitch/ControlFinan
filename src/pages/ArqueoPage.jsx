@@ -10,10 +10,10 @@ const ArqueoPage = ({ transactions, cajas, onAddTransactions, members }) => {
   const cajasConBalance = useMemo(() => {
     return cajas.map(caja => {
       const income = transactions
-        .filter(t => t.cajaId === caja.id && t.type === 'Ingreso')
+        .filter(t => t.caja_id === caja.id && t.type === 'Ingreso')
         .reduce((sum, t) => sum + t.amount, 0);
       const expense = transactions
-        .filter(t => t.cajaId === caja.id && t.type === 'Gasto')
+        .filter(t => t.caja_id === caja.id && t.type === 'Gasto')
         .reduce((sum, t) => sum + t.amount, 0);
       
       let balance = income - expense;
@@ -48,7 +48,7 @@ const ArqueoPage = ({ transactions, cajas, onAddTransactions, members }) => {
     const adjustmentType = difference > 0 ? 'Ingreso' : 'Gasto';
     const amount = Math.abs(difference);
 
-    const memberId = caja.memberId || members.find(m => m.role.includes('Principal'))?.id || members[0].id;
+    const memberId = caja.member_id || members.find(m => m.role.includes('Principal'))?.id || members[0].id;
     const member = members.find(m => m.id === memberId);
 
     const adjustmentTransaction = {

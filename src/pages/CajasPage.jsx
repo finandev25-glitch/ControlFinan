@@ -21,11 +21,11 @@ const CajasPage = ({ transactions, cajas, onAddCaja, members, onAddTransactions 
   const cajasConBalance = useMemo(() => {
     return cajas.map(caja => {
       const income = transactions
-        .filter(t => t.caja_id === caja.id && t.tipo === 'Ingreso')
-        .reduce((sum, t) => sum + t.monto, 0);
+        .filter(t => t.caja_id === caja.id && t.type === 'Ingreso')
+        .reduce((sum, t) => sum + t.amount, 0);
       const expense = transactions
-        .filter(t => t.caja_id === caja.id && t.tipo === 'Gasto')
-        .reduce((sum, t) => sum + t.monto, 0);
+        .filter(t => t.caja_id === caja.id && t.type === 'Gasto')
+        .reduce((sum, t) => sum + t.amount, 0);
       
       let balance = income - expense;
       if (caja.type === 'Tarjeta de Crédito' || caja.type === 'Préstamos') {

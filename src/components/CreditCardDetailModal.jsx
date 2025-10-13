@@ -31,7 +31,7 @@ const CreditCardDetailModal = ({ isOpen, onClose, card, transactions }) => {
     if (!card) return { currentCycle: { transactions: [], total: 0 }, nextCycle: { transactions: [], total: 0 } };
 
     const today = new Date();
-    const closingDay = card.closingDay;
+    const closingDay = card.closing_day;
 
     // Current billing cycle
     let currentCycleEndDate = new Date(today.getFullYear(), today.getMonth(), closingDay);
@@ -51,7 +51,7 @@ const CreditCardDetailModal = ({ isOpen, onClose, card, transactions }) => {
     const filterTransactionsForCycle = (start, end) => {
         return transactions.filter(t => {
             const txDate = new Date(t.date);
-            return t.cajaId === card.id && t.type === 'Gasto' && txDate >= start && txDate <= end;
+            return t.caja_id === card.id && t.type === 'Gasto' && txDate >= start && txDate <= end;
         });
     };
     

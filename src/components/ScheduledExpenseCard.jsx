@@ -12,14 +12,14 @@ const InfoLine = ({ icon: Icon, value }) => (
 );
 
 const ScheduledExpenseCard = ({ expense, member, caja }) => {
-  const category = expenseCategories.find(c => c.name === expense.categoria);
+  const category = expenseCategories.find(c => c.name === expense.category);
   const CategoryIcon = category?.icon || Tag;
 
   return (
     <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow duration-200">
       <div>
         <div className="flex justify-between items-start mb-2">
-          <h4 className="font-bold text-slate-800 flex-1 pr-2">{expense.descripcion}</h4>
+          <h4 className="font-bold text-slate-800 flex-1 pr-2">{expense.description}</h4>
           <div className="flex items-center gap-2">
             {expense.es_automatico && (
               <span title="Automático" className="flex-shrink-0 flex items-center gap-1 text-xs font-medium bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full">

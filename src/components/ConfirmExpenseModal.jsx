@@ -42,7 +42,7 @@ const ConfirmExpenseModal = ({ isOpen, onClose, onConfirm, expense, members, caj
         date: format(new Date(today.getFullYear(), today.getMonth(), expense.dayOfMonth), 'yyyy-MM-dd'),
         category: expense.category,
         memberId: expense.memberId,
-        cajaId: expense.cajaId || availableCajas[0]?.id || '',
+        cajaId: expense.caja_id || availableCajas[0]?.id || '',
       });
     }
   }, [expense, cajas]);
@@ -59,7 +59,7 @@ const ConfirmExpenseModal = ({ isOpen, onClose, onConfirm, expense, members, caj
     const finalData = {
         ...formData,
         amount: parseFloat(formData.amount),
-        memberId: parseInt(formData.memberId),
+        memberId: formData.memberId,
         cajaId: parseInt(formData.cajaId),
         date: new Date(formData.date),
     };

@@ -53,14 +53,14 @@ function App() {
         ] = await Promise.all([
           supabase.from('members').select('*'),
           supabase.from('cajas').select('*'),
-          supabase.from('transactions').select('*').order('fecha', { ascending: false }),
+          supabase.from('transactions').select('*').order('date', { ascending: false }),
           supabase.from('budgets').select('*'),
           supabase.from('scheduled_expenses').select('*')
         ]);
 
         const safeMembers = finalMembers || [];
         setMembers(safeMembers);
-        setTransactions((finalTransactions || []).map(t => ({...t, memberName: safeMembers.find(m => m.id === t.miembro_id)?.name })) || []);
+        setTransactions((finalTransactions || []).map(t => ({...t, memberName: safeMembers.find(m => m.id === t.member_id)?.name })) || []);
         setCajas((finalCajas || []).map(c => ({ ...c, icon: iconMap[c.type] })) || []);
         setBudgets(finalBudgets || []);
         setScheduledExpenses(finalScheduled || []);
@@ -86,7 +86,7 @@ function App() {
 
     const transactionsToInsert = mockTransactions.map(({ memberName, ...rest }) => ({
         ...rest,
-        miembro_id: rest.memberId,
+        member_id: rest.memberId,
         caja_id: rest.cajaId,
     }));
     await supabase.from('transactions').insert(transactionsToInsert);
@@ -95,10 +95,10 @@ function App() {
 
     const scheduledToInsert = mockScheduled.map(({ ...rest }) => ({
         ...rest,
-        miembro_id: rest.memberId,
+        member_id: rest.memberId,
         caja_id: rest.cajaId,
-        dia_del_mes: rest.dayOfMonth,
-        meses_confirmados: rest.confirmedMonths,
+        day_of_month: rest.dayOfMonth,
+        confirmed_months: rest.confirmedMonths,
     }));
     await supabase.from('scheduled_expenses').insert(scheduledToInsert);
     console.log("Seeding complete.");
@@ -108,13 +108,13 @@ function App() {
     const transactionsToAdd = Array.isArray(newTransactions) ? newTransactions : [newTransactions];
     
     const supabaseTransactions = transactionsToAdd.map(t => ({
-      fecha: t.date,
-      descripcion: t.description,
-      miembro_id: t.memberId,
+      date: t.date,
+      description: t.description,
+      member_id: t.memberId,
       caja_id: t.cajaId,
-      tipo: t.type,
-      categoria: t.category,
-      monto: t.amount
+      type: t.type,
+      category: t.category,
+      amount: t.amount
     }));
 
     const { data, error } = await supabase.from('transactions').insert(supabaseTransactions).select();
@@ -124,14 +124,39 @@ function App() {
     } else {
       const newTxsWithDetails = (data || []).map(tx => ({
           ...tx,
-          memberName: members.find(m => m.id === tx.miembro_id)?.name || 'N/A'
+          memberName: members.find(m => m.id === tx.member_id)?.name || 'N/A'
       }));
-      setTransactions(prev => [...newTxsWithDetails, ...prev].sort((a, b) => new Date(b.fecha) - new Date(a.fecha)));
+      setTransactions(prev => [...newTxsWithDetails, ...prev].sort((a, b) => new Date(b.date) - new Date(a.date)));
     }
   };
 
   const handleAddCaja = async (newCajaData) => {
-    const { data, error } = await supabase.from('cajas').insert([newCajaData]).select();
+    const supabaseData = {
+      name: newCajaData.name,
+      type: newCajaData.type,
+      member_id: newCajaData.memberId,
+      bank: newCajaData.bank,
+      alias: newCajaData.alias,
+      currency: newCajaData.currency,
+      account_number: newCajaData.accountNumber,
+      card_number: newCajaData.cardNumber,
+      credit_line: newCajaData.creditLine,
+      closing_day: newCajaData.closingDay,
+      payment_due_date: newCajaData.paymentDueDate,
+      loan_purpose: newCajaData.loanPurpose,
+      total_installments: newCajaData.totalInstallments,
+      paid_installments: newCajaData.paidInstallments,
+      payment_day: newCajaData.paymentDay,
+      monthly_payment: newCajaData.monthlyPayment,
+    };
+
+    Object.keys(supabaseData).forEach(key => {
+      if (supabaseData[key] === undefined || supabaseData[key] === '') {
+        delete supabaseData[key];
+      }
+    });
+
+    const { data, error } = await supabase.from('cajas').insert([supabaseData]).select();
     
     if (error) {
       console.error('Error adding caja:', error);
@@ -143,15 +168,15 @@ function App() {
       if (newCaja.type === 'Préstamos' || newCaja.type === 'Tarjeta de Crédito') {
         const isLoan = newCaja.type === 'Préstamos';
         const newExpenseData = {
-          descripcion: isLoan ? `Cuota de ${newCaja.name}` : `Pago de Tarjeta ${newCaja.name}`,
-          monto: isLoan ? parseFloat(newCaja.monto_cuota_mensual) || 0 : 0,
-          categoria: isLoan ? 'Vivienda' : 'Servicios',
-          dia_del_mes: isLoan ? parseInt(newCaja.dia_pago) : parseInt(newCaja.dia_pago_limite),
-          miembro_id: newCaja.miembro_id,
+          description: isLoan ? `Cuota de ${newCaja.name}` : `Pago de Tarjeta ${newCaja.name}`,
+          amount: isLoan ? parseFloat(newCaja.monthly_payment) || 0 : 0,
+          category: isLoan ? 'Vivienda' : 'Servicios',
+          day_of_month: isLoan ? parseInt(newCaja.payment_day) || 1 : parseInt(newCaja.payment_due_date) || 1,
+          member_id: newCaja.member_id,
           caja_id: null,
-          es_automatico: true,
-          es_pago_tarjeta: !isLoan,
-          tarjeta_credito_id: isLoan ? null : newCaja.id,
+          is_automatic: true,
+          is_credit_card_payment: !isLoan,
+          credit_card_id: isLoan ? null : newCaja.id,
         };
         await handleAddScheduledExpense(newExpenseData);
       }
@@ -159,13 +184,13 @@ function App() {
   };
 
   const handleSaveBudget = async (newBudget) => {
-    const { data, error } = await supabase.from('budgets').upsert(newBudget, { onConflict: 'categoria' }).select();
+    const { data, error } = await supabase.from('budgets').upsert(newBudget, { onConflict: 'category' }).select();
     
     if (error) {
       console.error('Error saving budget:', error);
     } else if (data && data.length > 0) {
       setBudgets(prev => {
-        const existingIndex = prev.findIndex(b => b.categoria === newBudget.categoria);
+        const existingIndex = prev.findIndex(b => b.category === newBudget.category);
         if (existingIndex > -1) {
           const updatedBudgets = [...prev];
           updatedBudgets[existingIndex] = data[0];
@@ -241,29 +266,29 @@ function App() {
     setMembers(prev => prev.filter(m => m.id !== memberId));
     setCajas(prev => prev.filter(c => c.member_id !== memberId));
     setTransactions(prev => prev.map(t => 
-        t.miembro_id === memberId 
-        ? { ...t, miembro_id: null, memberName: 'Eliminado' } 
+        t.member_id === memberId 
+        ? { ...t, member_id: null, memberName: 'Eliminado' } 
         : t
     ));
   };
 
 
   const handleOpenConfirmModal = (expense) => {
-    let expenseToReview = { ...expense, amount: expense.monto, dayOfMonth: expense.dia_del_mes, memberId: expense.miembro_id };
-    if (expense.es_pago_tarjeta) {
-        const creditCard = cajas.find(c => c.id === expense.tarjeta_credito_id);
+    let expenseToReview = { ...expense, amount: expense.amount, dayOfMonth: expense.day_of_month, memberId: expense.member_id };
+    if (expense.is_credit_card_payment) {
+        const creditCard = cajas.find(c => c.id === expense.credit_card_id);
         if (creditCard) {
             const today = new Date();
-            const cycleStart = new Date(today.getFullYear(), today.getMonth() -1, creditCard.dia_cierre + 1);
-            const cycleEnd = new Date(today.getFullYear(), today.getMonth(), creditCard.dia_cierre);
+            const cycleStart = new Date(today.getFullYear(), today.getMonth() -1, creditCard.closing_day + 1);
+            const cycleEnd = new Date(today.getFullYear(), today.getMonth(), creditCard.closing_day);
             
             const cycleTransactions = transactions.filter(t => 
                 t.caja_id === creditCard.id &&
-                t.tipo === 'Gasto' &&
-                new Date(t.fecha) >= cycleStart &&
-                new Date(t.fecha) <= cycleEnd
+                t.type === 'Gasto' &&
+                new Date(t.date) >= cycleStart &&
+                new Date(t.date) <= cycleEnd
             );
-            const cycleTotal = cycleTransactions.reduce((sum, t) => sum + t.monto, 0);
+            const cycleTotal = cycleTransactions.reduce((sum, t) => sum + t.amount, 0);
             expenseToReview.amount = cycleTotal;
         }
     }
@@ -285,11 +310,11 @@ function App() {
     const periodKey = format(new Date(today.getFullYear(), today.getMonth()), 'yyyy-MM');
 
     const scheduledExpense = scheduledExpenses.find(e => e.id === scheduledExpenseId);
-    const updatedConfirmedMonths = [...(scheduledExpense.meses_confirmados || []), periodKey];
+    const updatedConfirmedMonths = [...(scheduledExpense.confirmed_months || []), periodKey];
 
     const { error } = await supabase
       .from('scheduled_expenses')
-      .update({ meses_confirmados: updatedConfirmedMonths })
+      .update({ confirmed_months: updatedConfirmedMonths })
       .eq('id', scheduledExpenseId);
 
     if (error) {
@@ -297,7 +322,7 @@ function App() {
     } else {
       setScheduledExpenses(prev => prev.map(exp => 
         exp.id === scheduledExpenseId 
-          ? { ...exp, meses_confirmados: updatedConfirmedMonths } 
+          ? { ...exp, confirmed_months: updatedConfirmedMonths } 
           : exp
       ));
     }
@@ -318,12 +343,12 @@ function App() {
     return scheduledExpenses.filter(exp => {
       const currentMonthPeriodKey = format(new Date(today.getFullYear(), today.getMonth()), 'yyyy-MM');
       
-      const isConfirmedForCurrentMonth = exp.meses_confirmados?.includes(currentMonthPeriodKey);
+      const isConfirmedForCurrentMonth = exp.confirmed_months?.includes(currentMonthPeriodKey);
       if (isConfirmedForCurrentMonth) {
         return false;
       }
       
-      const dueDateThisMonth = new Date(today.getFullYear(), today.getMonth(), exp.dia_del_mes);
+      const dueDateThisMonth = new Date(today.getFullYear(), today.getMonth(), exp.day_of_month);
 
       const isDueSoon = isWithinInterval(dueDateThisMonth, {
         start: today,
