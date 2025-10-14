@@ -8,11 +8,12 @@ import BalanceSummaryCard from '../components/BalanceSummaryCard';
 import ProjectedBalanceCard from '../components/ProjectedBalanceCard';
 import ProjectedExpensesModal from '../components/ProjectedExpensesModal';
 import TransferDetailModal from '../components/TransferDetailModal';
-import { Users, Tag } from 'lucide-react';
+import MemberSelector from '../components/MemberSelector';
+import { Tag } from 'lucide-react';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
 import * as Icons from 'lucide-react';
 
-const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpenses, categories, selectedYear, selectedMonth, onYearChange, onMonthChange }) => {
+const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpenses, categories, selectedYear, selectedMonth, onYearChange, onMonthChange, availableYears }) => {
   const [selectedMemberId, setSelectedMemberId] = useState('all');
   const [isProjectedExpensesModalOpen, setProjectedExpensesModalOpen] = useState(false);
   const [isTransferModalOpen, setTransferModalOpen] = useState(false);
@@ -186,22 +187,13 @@ const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpense
               <h1 className="text-3xl font-bold text-slate-800">Dashboard</h1>
               <p className="text-slate-500 mt-1">Una vista completa de la salud financiera familiar.</p>
           </div>
-          <div className="flex items-center gap-4">
-              <div className="relative">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                      <Users className="h-5 w-5 text-slate-400" />
-                  </div>
-                  <select
-                      id="memberFilter"
-                      className="block w-full rounded-md border-slate-300 pl-10 py-2 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                      value={selectedMemberId}
-                      onChange={(e) => setSelectedMemberId(e.target.value)}
-                  >
-                      <option value="all">Todos los Miembros</option>
-                      {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                  </select>
-              </div>
-              <PeriodSelector selectedYear={selectedYear} selectedMonth={selectedMonth} onYearChange={onYearChange} onMonthChange={onMonthChange} />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+              <MemberSelector 
+                members={members}
+                selectedMemberId={selectedMemberId}
+                onMemberChange={setSelectedMemberId}
+              />
+              <PeriodSelector availableYears={availableYears} selectedYear={selectedYear} selectedMonth={selectedMonth} onYearChange={onYearChange} onMonthChange={onMonthChange} />
           </div>
         </div>
 

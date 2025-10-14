@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
+import AuthLayout from './components/AuthLayout';
 import DashboardPage from './pages/DashboardPage';
-import MembersPage from './pages/MembersPage';
+import TransactionsPage from './pages/TransactionsPage';
 import ReportsPage from './pages/ReportsPage';
 import CajasPage from './pages/CajasPage';
 import AdvancedReportsPage from './pages/AdvancedReportsPage';
@@ -11,6 +12,8 @@ import ArqueoPage from './pages/ArqueoPage';
 import ScheduledExpensesPage from './pages/ScheduledExpensesPage';
 import SettingsPage from './pages/SettingsPage';
 import ConfirmExpenseModal from './components/ConfirmExpenseModal';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
 import { supabase } from './supabaseClient';
 import { Wallet, Landmark, CreditCard, University, LoaderCircle } from 'lucide-react';
 import { format, isWithinInterval, addDays, startOfDay } from 'date-fns';
@@ -25,6 +28,7 @@ const cajaIconMap = {
 
 function App() {
   const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState(null);
   const [members, setMembers] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [cajas, setCajas] = useState([]);
@@ -36,79 +40,59 @@ function App() {
   const [expenseToConfirm, setExpenseToConfirm] = useState(null);
 
   useEffect(() => {
-    const fetchInitialData = async () => {
-      setLoading(true);
-      try {
-        const { data: membersData } = await supabase.from('members').select('*');
-        
-        if (membersData && membersData.length === 0) {
-          await seedDatabase();
-        }
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setLoading(false);
+    });
 
-        const [
-          { data: finalMembers },
-          { data: finalCajas },
-          { data: finalTransactions },
-          { data: finalBudgets },
-          { data: finalScheduled },
-          { data: finalCategories }
-        ] = await Promise.all([
-          supabase.from('members').select('*'),
-          supabase.from('cajas').select('*'),
-          supabase.from('transactions').select('*').order('date', { ascending: false }),
-          supabase.from('budgets').select('*'),
-          supabase.from('scheduled_expenses').select('*'),
-          supabase.from('categories').select('*')
-        ]);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
 
-        const safeMembers = finalMembers || [];
-        setMembers(safeMembers);
-        setTransactions((finalTransactions || []).map(t => ({...t, memberName: safeMembers.find(m => m.id === t.member_id)?.name })) || []);
-        setCajas((finalCajas || []).map(c => ({ ...c, icon: cajaIconMap[c.type] })) || []);
-        setBudgets(finalBudgets || []);
-        setScheduledExpenses(finalScheduled || []);
-        setCategories(finalCategories || []);
-
-      } catch (error) {
-        console.error("Error loading data from Supabase:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchInitialData();
+    return () => subscription.unsubscribe();
   }, []);
 
-  const seedDatabase = async () => {
-    console.log("Database is empty. Seeding data...");
-    const { members: mockMembers, cajas: mockCajas, transactions: mockTransactions, budgets: mockBudgets, scheduledExpenses: mockScheduled, categories: mockCategories } = await import('./data/seed.js');
-    
-    await supabase.from('members').insert(mockMembers);
-    
-    const cajasToInsert = mockCajas.map(({ icon, ...rest }) => rest);
-    await supabase.from('cajas').insert(cajasToInsert);
+  const fetchInitialData = useCallback(async (userId) => {
+    if (!userId) return;
+    setLoading(true);
+    try {
+      const [
+        { data: finalMembers },
+        { data: finalCajas },
+        { data: finalTransactions },
+        { data: finalBudgets },
+        { data: finalScheduled },
+        { data: finalCategories }
+      ] = await Promise.all([
+        supabase.from('members').select('*').eq('user_id', userId),
+        supabase.from('cajas').select('*').eq('user_id', userId),
+        supabase.from('transactions').select('*').eq('user_id', userId).order('date', { ascending: false }),
+        supabase.from('budgets').select('*').eq('user_id', userId),
+        supabase.from('scheduled_expenses').select('*').eq('user_id', userId),
+        supabase.from('categories').select('*').eq('user_id', userId)
+      ]);
 
-    const transactionsToInsert = mockTransactions.map(({ memberName, ...rest }) => ({
-        ...rest,
-        member_id: rest.memberId,
-        caja_id: rest.cajaId,
-    }));
-    await supabase.from('transactions').insert(transactionsToInsert);
-    
-    await supabase.from('budgets').insert(mockBudgets);
+      const safeMembers = finalMembers || [];
+      setMembers(safeMembers);
+      setTransactions((finalTransactions || []).map(t => ({...t, memberName: safeMembers.find(m => m.id === t.member_id)?.name })) || []);
+      setCajas((finalCajas || []).map(c => ({ ...c, icon: cajaIconMap[c.type] })) || []);
+      setBudgets(finalBudgets || []);
+      setScheduledExpenses(finalScheduled || []);
+      setCategories(finalCategories || []);
 
-    const scheduledToInsert = mockScheduled.map(({ ...rest }) => ({
-        ...rest,
-        member_id: rest.memberId,
-        caja_id: rest.cajaId,
-        day_of_month: rest.dayOfMonth,
-        confirmed_months: rest.confirmedMonths,
-    }));
-    await supabase.from('scheduled_expenses').insert(scheduledToInsert);
-    
-    await supabase.from('categories').insert(mockCategories);
-    console.log("Seeding complete.");
-  };
+    } catch (error) {
+      console.error("Error loading data from Supabase:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  
+  useEffect(() => {
+    if (session) {
+      fetchInitialData(session.user.id);
+    }
+  }, [session, fetchInitialData]);
+
 
   const handleAddTransactions = async (newTransactions, isTransfer = false, transferId = null) => {
     const transactionsToAdd = Array.isArray(newTransactions) ? newTransactions : [newTransactions];
@@ -116,12 +100,13 @@ function App() {
     const supabaseTransactions = transactionsToAdd.map(t => ({
       date: t.date,
       description: t.description,
-      member_id: t.memberId,
-      caja_id: t.cajaId,
+      member_id: t.memberId || null,
+      caja_id: t.cajaId || null,
       type: t.type,
       category: t.category,
       amount: t.amount,
       transfer_id: isTransfer ? transferId : null,
+      user_id: session.user.id,
     }));
 
     const { data, error } = await supabase.from('transactions').insert(supabaseTransactions).select();
@@ -141,7 +126,6 @@ function App() {
     if (updatedData.isTransferEdit) {
       const { originalTransferId, newTransactions } = updatedData;
   
-      // 1. Delete the old transfer pair from DB
       const { error: deleteError } = await supabase
         .from('transactions')
         .delete()
@@ -152,18 +136,16 @@ function App() {
         return;
       }
   
-      // Remove from local state BEFORE adding new ones
       setTransactions(prev => prev.filter(t => t.transfer_id !== originalTransferId));
   
-      // 2. Add the new transfer pair to DB and state, re-using the original transfer ID
       await handleAddTransactions(newTransactions, true, originalTransferId);
   
-    } else { // It's a simple transaction edit
+    } else {
       const supabaseData = {
         date: updatedData.date,
         description: updatedData.description,
-        member_id: updatedData.memberId,
-        caja_id: updatedData.cajaId,
+        member_id: updatedData.memberId || null,
+        caja_id: updatedData.cajaId || null,
         type: updatedData.type,
         category: updatedData.category,
         amount: updatedData.amount
@@ -190,7 +172,6 @@ function App() {
   
   const handleDeleteTransaction = async (transaction) => {
     if (transaction.transfer_id) {
-      // It's a transfer, delete both parts
       const { error } = await supabase
         .from('transactions')
         .delete()
@@ -202,7 +183,6 @@ function App() {
         setTransactions(prev => prev.filter(t => t.transfer_id !== transaction.transfer_id));
       }
     } else {
-      // It's a single transaction
       const { error } = await supabase
         .from('transactions')
         .delete()
@@ -220,7 +200,7 @@ function App() {
     const supabaseData = {
       name: newCajaData.name,
       type: newCajaData.type,
-      member_id: newCajaData.memberId,
+      member_id: newCajaData.memberId || null,
       bank: newCajaData.bank,
       alias: newCajaData.alias,
       currency: newCajaData.currency,
@@ -234,6 +214,7 @@ function App() {
       paid_installments: newCajaData.paidInstallments,
       payment_day: newCajaData.paymentDay,
       monthly_payment: newCajaData.monthlyPayment,
+      user_id: session.user.id,
     };
 
     Object.keys(supabaseData).forEach(key => {
@@ -270,13 +251,14 @@ function App() {
   };
 
   const handleSaveBudget = async (newBudget) => {
-    const { data, error } = await supabase.from('budgets').upsert(newBudget, { onConflict: 'category' }).select();
+    const budgetToSave = { ...newBudget, user_id: session.user.id };
+    const { data, error } = await supabase.from('budgets').upsert(budgetToSave, { onConflict: 'user_id,category,month,year' }).select();
     
     if (error) {
       console.error('Error saving budget:', error);
     } else if (data && data.length > 0) {
       setBudgets(prev => {
-        const existingIndex = prev.findIndex(b => b.category === newBudget.category);
+        const existingIndex = prev.findIndex(b => b.category === newBudget.category && b.month === newBudget.month && b.year === newBudget.year);
         if (existingIndex > -1) {
           const updatedBudgets = [...prev];
           updatedBudgets[existingIndex] = data[0];
@@ -287,8 +269,23 @@ function App() {
     }
   };
 
+  const handleDeleteBudget = async (budgetId) => {
+    const { error } = await supabase.from('budgets').delete().eq('id', budgetId);
+    if (error) {
+      console.error('Error deleting budget:', error);
+    } else {
+      setBudgets(prev => prev.filter(b => b.id !== budgetId));
+    }
+  };
+
   const handleAddScheduledExpense = async (newExpenseData) => {
-    const { data, error } = await supabase.from('scheduled_expenses').insert([newExpenseData]).select();
+    const supabaseData = {
+      ...newExpenseData,
+      member_id: newExpenseData.member_id || null,
+      caja_id: newExpenseData.caja_id || null,
+      user_id: session.user.id,
+    };
+    const { data, error } = await supabase.from('scheduled_expenses').insert([supabaseData]).select();
     if (error) {
       console.error('Error adding scheduled expense:', error);
     } else if (data && data.length > 0) {
@@ -299,7 +296,8 @@ function App() {
   const handleAddMember = async (newMemberData) => {
     const newMember = {
       ...newMemberData,
-      avatar: faker.image.avatar()
+      avatar: faker.image.avatar(),
+      user_id: session.user.id,
     };
     const { data, error } = await supabase.from('members').insert([newMember]).select();
     if (error) {
@@ -313,6 +311,7 @@ function App() {
           name: `Efectivo ${firstName}`,
           type: 'Efectivo',
           member_id: newlyAddedMember.id,
+          user_id: session.user.id,
       };
 
       const { data: cajaData, error: cajaError } = await supabase
@@ -360,7 +359,8 @@ function App() {
   };
 
   const handleAddCategory = async (categoryData) => {
-    const { data, error } = await supabase.from('categories').insert([categoryData]).select();
+    const categoryToSave = { ...categoryData, user_id: session.user.id };
+    const { data, error } = await supabase.from('categories').insert([categoryToSave]).select();
     if (error) {
       console.error('Error adding category:', error);
     } else if (data && data.length > 0) {
@@ -442,11 +442,22 @@ function App() {
     handleCloseConfirmModal();
   };
 
+  const availableYears = useMemo(() => {
+    if (transactions.length === 0) {
+      return [new Date().getFullYear()];
+    }
+    const years = new Set(transactions.map(t => new Date(t.date).getFullYear()));
+    const currentYear = new Date().getFullYear();
+    years.add(currentYear);
+    return Array.from(years).sort((a, b) => b - a);
+  }, [transactions]);
+
   const periodProps = {
     selectedYear,
     selectedMonth,
     onYearChange: setSelectedYear,
     onMonthChange: setSelectedMonth,
+    availableYears,
   };
 
   const pendingExpenses = useMemo(() => {
@@ -472,12 +483,27 @@ function App() {
     });
   }, [scheduledExpenses]);
 
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error('Error logging out:', error);
+    } else {
+      // Clear all local state
+      setMembers([]);
+      setTransactions([]);
+      setCajas([]);
+      setBudgets([]);
+      setScheduledExpenses([]);
+      setCategories([]);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-gray-50">
         <div className="flex flex-col items-center gap-4">
           <LoaderCircle className="h-12 w-12 animate-spin text-primary-600" />
-          <p className="text-slate-600">Conectando con la base de datos...</p>
+          <p className="text-slate-600">Cargando...</p>
         </div>
       </div>
     );
@@ -485,87 +511,117 @@ function App() {
 
   return (
     <Router>
-      <Layout 
-        pendingExpenses={pendingExpenses}
-        onReviewExpense={handleOpenConfirmModal}
-        members={members}
-        cajas={cajas}
-      >
-        <Routes>
+      <Routes>
+        {!session ? (
+          <Route element={<AuthLayout />}>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage onRegister={fetchInitialData} />} />
+            <Route path="*" element={<Navigate to="/login" />} />
+          </Route>
+        ) : (
           <Route 
-            path="/" 
             element={
-              <DashboardPage 
-                transactions={transactions} 
-                members={members} 
-                budgets={budgets} 
-                cajas={cajas}
-                scheduledExpenses={scheduledExpenses}
-                categories={categories}
-                {...periodProps} 
-              />
-            } 
-          />
-          <Route 
-            path="/miembros" 
-            element={<MembersPage transactions={transactions} onAddTransactions={handleAddTransactions} onUpdateTransaction={handleUpdateTransaction} onDeleteTransaction={handleDeleteTransaction} cajas={cajas} members={members} onAddMember={handleAddMember} onDeleteMember={handleDeleteMember} categories={categories} />} 
-          />
-          <Route 
-            path="/cajas" 
-            element={<CajasPage transactions={transactions} cajas={cajas} onAddCaja={handleAddCaja} members={members} />} 
-          />
-          <Route 
-            path="/arqueo" 
-            element={<ArqueoPage transactions={transactions} cajas={cajas} onAddTransactions={handleAddTransactions} members={members} />} 
-          />
-          <Route 
-            path="/reportes" 
-            element={<ReportsPage transactions={transactions} cajas={cajas} members={members} categories={categories} />} 
-          />
-           <Route 
-            path="/analisis" 
-            element={<AdvancedReportsPage transactions={transactions} members={members} categories={categories} {...periodProps} />} 
-          />
-          <Route 
-            path="/presupuesto" 
-            element={<BudgetsPage budgets={budgets} transactions={transactions} onSaveBudget={handleSaveBudget} categories={categories} {...periodProps} />} 
-          />
-          <Route
-            path="/gastos-programados"
-            element={
-              <ScheduledExpensesPage
-                scheduledExpenses={scheduledExpenses}
-                onAddScheduledExpense={handleAddScheduledExpense}
+              <Layout 
+                pendingExpenses={pendingExpenses}
+                onReviewExpense={handleOpenConfirmModal}
                 members={members}
                 cajas={cajas}
-                transactions={transactions}
+                onLogout={handleLogout}
                 categories={categories}
-                {...periodProps}
               />
             }
-          />
-          <Route
-            path="/configuracion"
-            element={
-              <SettingsPage
-                categories={categories}
-                members={members}
-                onAddCategory={handleAddCategory}
-                onDeleteCategory={handleDeleteCategory}
-                onUpdateMemberAvatar={handleUpdateMemberAvatar}
-              />
-            }
-          />
-        </Routes>
-      </Layout>
-      <ConfirmExpenseModal
-        isOpen={!!expenseToConfirm}
-        onClose={handleCloseConfirmModal}
-        onConfirm={handleConfirmExpense}
-        expense={expenseToConfirm}
-        members={members}
-        cajas={cajas}
-      />
+          >
+            <Route 
+              path="/" 
+              element={
+                <DashboardPage 
+                  transactions={transactions} 
+                  members={members} 
+                  budgets={budgets} 
+                  cajas={cajas}
+                  scheduledExpenses={scheduledExpenses}
+                  categories={categories}
+                  {...periodProps} 
+                />
+              } 
+            />
+            <Route 
+              path="/transacciones" 
+              element={
+                <TransactionsPage 
+                  transactions={transactions} 
+                  onAddTransactions={handleAddTransactions} 
+                  onUpdateTransaction={handleUpdateTransaction} 
+                  onDeleteTransaction={handleDeleteTransaction} 
+                  cajas={cajas} 
+                  members={members} 
+                  categories={categories} 
+                />
+              } 
+            />
+            <Route 
+              path="/cajas" 
+              element={<CajasPage transactions={transactions} cajas={cajas} onAddCaja={handleAddCaja} members={members} />} 
+            />
+            <Route 
+              path="/arqueo" 
+              element={<ArqueoPage transactions={transactions} cajas={cajas} onAddTransactions={handleAddTransactions} members={members} />} 
+            />
+            <Route 
+              path="/reportes" 
+              element={<ReportsPage transactions={transactions} cajas={cajas} members={members} categories={categories} />} 
+            />
+            <Route 
+              path="/analisis" 
+              element={<AdvancedReportsPage transactions={transactions} members={members} categories={categories} {...periodProps} />} 
+            />
+            <Route 
+              path="/presupuesto" 
+              element={<BudgetsPage budgets={budgets} transactions={transactions} onSaveBudget={handleSaveBudget} onDeleteBudget={handleDeleteBudget} categories={categories} {...periodProps} />} 
+            />
+            <Route
+              path="/gastos-programados"
+              element={
+                <ScheduledExpensesPage
+                  scheduledExpenses={scheduledExpenses}
+                  onAddScheduledExpense={handleAddScheduledExpense}
+                  members={members}
+                  cajas={cajas}
+                  transactions={transactions}
+                  categories={categories}
+                  {...periodProps}
+                />
+              }
+            />
+            <Route
+              path="/configuracion"
+              element={
+                <SettingsPage
+                  categories={categories}
+                  members={members}
+                  transactions={transactions}
+                  onAddCategory={handleAddCategory}
+                  onDeleteCategory={handleDeleteCategory}
+                  onAddMember={handleAddMember}
+                  onDeleteMember={handleDeleteMember}
+                  onUpdateMemberAvatar={handleUpdateMemberAvatar}
+                />
+              }
+            />
+            <Route path="*" element={<Navigate to="/" />} />
+          </Route>
+        )}
+      </Routes>
+      {session && (
+        <ConfirmExpenseModal
+          isOpen={!!expenseToConfirm}
+          onClose={handleCloseConfirmModal}
+          onConfirm={handleConfirmExpense}
+          expense={expenseToConfirm}
+          members={members}
+          cajas={cajas}
+        />
+      )}
     </Router>
   );
 }

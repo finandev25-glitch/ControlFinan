@@ -102,7 +102,7 @@ const AddCajaModal = ({ isOpen, onClose, onSave, members }) => {
               <FormInput id="totalInstallments" name="totalInstallments" label="Cuotas Totales" type="number" min="1" placeholder="48" value={formData.totalInstallments || ''} onChange={handleInputChange} />
               <FormInput id="paidInstallments" name="paidInstallments" label="Cuotas Pagadas" type="number" min="0" placeholder="0" value={formData.paidInstallments || ''} onChange={handleInputChange} />
             </div>
-            <FormInput id="paymentDay" name="paymentDay" label="Día de Pago (del mes)" type="number" min="1" max="31" placeholder="5" value={formData.paymentDay || ''} onChange={handleInputChange} />
+            <FormInput id="paymentDay" name="paymentDay" label="Día de Pago (mes)" type="number" min="1" max="31" placeholder="5" value={formData.paymentDay || ''} onChange={handleInputChange} />
           </>
         );
       default:

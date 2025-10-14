@@ -1,18 +1,34 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { X } from 'lucide-react';
 import CategorySelector from './CategorySelector';
 import * as Icons from 'lucide-react';
 
-const AddBudgetModal = ({ isOpen, onClose, onSave, existingBudgets, expenseCategories, categoryIconMap }) => {
-  const availableCategories = useMemo(() => 
-    expenseCategories.filter(
-      cat => !existingBudgets.some(b => b.category === cat.name)
-    ), 
-    [expenseCategories, existingBudgets]
-  );
+const AddBudgetModal = ({ isOpen, onClose, onSave, existingBudgets, expenseCategories, categoryIconMap, budgetToEdit }) => {
+  const isEditing = !!budgetToEdit;
 
-  const [category, setCategory] = useState(availableCategories[0]?.name || '');
+  const availableCategories = useMemo(() => {
+    if (isEditing) {
+      return expenseCategories;
+    }
+    return expenseCategories.filter(
+      cat => !existingBudgets.some(b => b.category === cat.name)
+    );
+  }, [expenseCategories, existingBudgets, isEditing]);
+
+  const [category, setCategory] = useState('');
   const [limit, setLimit] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      if (isEditing) {
+        setCategory(budgetToEdit.category);
+        setLimit(budgetToEdit.limit_amount);
+      } else {
+        setCategory(availableCategories[0]?.name || '');
+        setLimit('');
+      }
+    }
+  }, [isOpen, isEditing, budgetToEdit, availableCategories]);
 
   const categoriesWithIcons = useMemo(() => {
     if (!availableCategories || !categoryIconMap) return [];
@@ -31,9 +47,6 @@ const AddBudgetModal = ({ isOpen, onClose, onSave, existingBudgets, expenseCateg
       return;
     }
     onSave({ category, limit_amount: parseFloat(limit) });
-    onClose();
-    setCategory(availableCategories[0]?.name || '');
-    setLimit('');
   };
 
   return (
@@ -42,8 +55,8 @@ const AddBudgetModal = ({ isOpen, onClose, onSave, existingBudgets, expenseCateg
         <button onClick={onClose} className="absolute top-4 right-4 text-slate-500 hover:text-slate-800 transition-colors">
           <X size={24} />
         </button>
-        <h2 className="text-2xl font-bold text-slate-800 mb-2">Crear Presupuesto</h2>
-        <p className="text-slate-500 mb-6">Establece un límite de gasto para una categoría.</p>
+        <h2 className="text-2xl font-bold text-slate-800 mb-2">{isEditing ? 'Editar Presupuesto' : 'Crear Presupuesto'}</h2>
+        <p className="text-slate-500 mb-6">{isEditing ? 'Actualiza el límite de gasto para esta categoría.' : 'Establece un límite de gasto para una categoría.'}</p>
         
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
@@ -52,8 +65,9 @@ const AddBudgetModal = ({ isOpen, onClose, onSave, existingBudgets, expenseCateg
               categories={categoriesWithIcons}
               selectedCategory={category}
               onSelect={setCategory}
+              disabled={isEditing}
             />
-             {availableCategories.length === 0 && (
+             {!isEditing && availableCategories.length === 0 && (
                 <p className="text-xs text-slate-500 mt-2">Ya has creado presupuestos para todas las categorías disponibles.</p>
              )}
           </div>
@@ -83,10 +97,10 @@ const AddBudgetModal = ({ isOpen, onClose, onSave, existingBudgets, expenseCateg
             </button>
             <button 
               type="submit" 
-              className="px-6 py-2.5 text-sm font-semibold text-white bg-primary-600 border border-transparent rounded-full shadow-sm hover:bg-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-500"
-              disabled={availableCategories.length === 0}
+              className="px-6 py-2.5 text-sm font-semibold text-white bg-primary-600 border border-transparent rounded-full shadow-sm hover:bg-primary-700"
+              disabled={!isEditing && availableCategories.length === 0}
             >
-              Guardar Presupuesto
+              {isEditing ? 'Actualizar' : 'Guardar'} Presupuesto
             </button>
           </div>
         </form>

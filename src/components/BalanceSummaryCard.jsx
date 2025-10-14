@@ -43,7 +43,7 @@ const BalanceSummaryCard = ({ summary, onDetailsClick }) => {
                 <Scale className="h-6 w-6 text-primary-600" />
                 <span className="text-base font-bold text-slate-800">Balance General</span>
             </div>
-            <span className="text-2xl font-bold text-slate-800">{formatCurrency(balance)}</span>
+            <span className="text-xl sm:text-2xl font-bold text-slate-800">{formatCurrency(balance)}</span>
         </div>
       </div>
     </div>

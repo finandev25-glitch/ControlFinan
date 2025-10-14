@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
 
-const CategorySelector = ({ label, categories, selectedCategory, onSelect }) => {
+const CategorySelector = ({ label, categories, selectedCategory, onSelect, disabled = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef(null);
 
@@ -30,19 +30,22 @@ const CategorySelector = ({ label, categories, selectedCategory, onSelect }) => 
       <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="relative w-full cursor-pointer rounded-xl border border-slate-300 bg-slate-50 py-3 pl-4 pr-10 text-left shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 sm:text-sm"
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        className={`relative w-full cursor-pointer rounded-xl border border-slate-300 py-3 pl-4 pr-10 text-left shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 sm:text-sm ${disabled ? 'bg-slate-200 cursor-not-allowed' : 'bg-slate-50'}`}
+        disabled={disabled}
       >
         <span className="flex items-center">
           <SelectedIcon className="h-5 w-5 text-slate-500" />
           <span className="ml-3 block truncate">{selectedCategoryObject.name}</span>
         </span>
-        <span className="pointer-events-none absolute inset-y-0 right-0 ml-3 flex items-center pr-2">
-          <ChevronDown className={`h-5 w-5 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
-        </span>
+        {!disabled && (
+          <span className="pointer-events-none absolute inset-y-0 right-0 ml-3 flex items-center pr-2">
+            <ChevronDown className={`h-5 w-5 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+          </span>
+        )}
       </button>
 
-      {isOpen && (
+      {isOpen && !disabled && (
         <div className="absolute z-10 mt-1 w-full rounded-md bg-white shadow-lg border border-slate-200">
           <ul tabIndex="-1" role="listbox" className="max-h-56 overflow-auto rounded-md py-1 text-base focus:outline-none sm:text-sm">
             {categories.map((category) => {

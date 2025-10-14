@@ -201,18 +201,25 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas,
     icon: categoryIconMap[cat.name],
   }));
   
-  const FromCajaIcon = cajas.find(c => c.id === formData.fromCajaId)?.icon || Wallet;
-  const ToCajaIcon = cajas.find(c => c.id === formData.toCajaId)?.icon || Wallet;
-  const StandardCajaIcon = cajas.find(c => c.id === formData.cajaId)?.icon || Wallet;
+  const FromCajaIcon = cajas.find(c => String(c.id) === String(formData.fromCajaId))?.icon || Wallet;
+  const ToCajaIcon = cajas.find(c => String(c.id) === String(formData.toCajaId))?.icon || Wallet;
+  const StandardCajaIcon = cajas.find(c => String(c.id) === String(formData.cajaId))?.icon || Wallet;
 
-  const fromCaja = cajas.find(c => c.id === formData.fromCajaId);
-  const fromMember = fromCaja ? members.find(m => m.id === fromCaja.member_id) : null;
+  const fromCaja = cajas.find(c => String(c.id) === String(formData.fromCajaId));
+  const fromMember = fromCaja ? members.find(m => String(m.id) === String(fromCaja.member_id)) : null;
 
-  const toCaja = cajas.find(c => c.id === formData.toCajaId);
-  const toMember = toCaja ? members.find(m => m.id === toCaja.member_id) : null;
+  const toCaja = cajas.find(c => String(c.id) === String(formData.toCajaId));
+  const toMember = toCaja ? members.find(m => String(m.id) === String(toCaja.member_id)) : null;
   
-  const standardCaja = cajas.find(c => c.id === formData.cajaId);
-  const standardMember = standardCaja ? members.find(m => m.id === standardCaja.member_id) : null;
+  const standardCaja = cajas.find(c => String(c.id) === String(formData.cajaId));
+  const standardMember = standardCaja ? members.find(m => String(m.id) === String(standardCaja.member_id)) : null;
+
+  const typeLabels = {
+    'Ingreso': 'Ingreso',
+    'Gasto': 'Gasto',
+    'Transferencia': 'Transferencia',
+    'Interna': 'Retiro/Depósito',
+  };
 
   return (
     <>
@@ -220,6 +227,20 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas,
         <h2 className="text-xl font-bold text-slate-800 mb-4">{isEditing ? 'Editar Transacción' : 'Añadir Transacción'}</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           
+          {isEditing ? (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Tipo de Transacción</label>
+              <div className="p-1 bg-gray-100 rounded-full">
+                <div className="w-full py-2.5 text-sm font-medium leading-5 rounded-full bg-primary-600 text-white shadow text-center">
+                  {typeLabels[formData.type]}
+                </div>
+              </div>
+              <p className="text-xs text-slate-500 mt-1 text-center">El tipo de transacción no se puede cambiar.</p>
+            </div>
+          ) : (
+            <ToggleSwitch selectedType={formData.type} onChange={handleTypeChange} />
+          )}
+
           <div>
               <label htmlFor="amount" className="block text-sm font-medium text-slate-700 mb-1">Monto (PEN)</label>
               <input 
@@ -228,8 +249,6 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas,
                   placeholder="0.00" required step="0.01" 
               />
           </div>
-
-          <ToggleSwitch selectedType={formData.type} onChange={handleTypeChange} />
           
           {isStandardTransaction && (
             <>

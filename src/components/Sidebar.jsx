@@ -1,8 +1,8 @@
 import React, { useRef, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { PiggyBank, LayoutDashboard, Users, Wallet, Target, BarChart3, FileText, X, ClipboardCheck, CalendarClock, Settings } from 'lucide-react';
+import { PiggyBank, LayoutDashboard, ArrowLeftRight, Wallet, Target, BarChart3, FileText, X, ClipboardCheck, CalendarClock, Settings, LogOut } from 'lucide-react';
 
-const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
+const Sidebar = ({ sidebarOpen, setSidebarOpen, onLogout }) => {
   const location = useLocation();
   const { pathname } = location;
   const sidebar = useRef(null);
@@ -20,7 +20,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
 
   const navLinks = [
     { to: "/", icon: LayoutDashboard, text: "Dashboard" },
-    { to: "/miembros", icon: Users, text: "Miembros" },
+    { to: "/transacciones", icon: ArrowLeftRight, text: "Transacciones" },
     { to: "/cajas", icon: Wallet, text: "Cajas" },
     { to: "/arqueo", icon: ClipboardCheck, text: "Arqueo de Caja" },
     { to: "/gastos-programados", icon: CalendarClock, text: "Gastos Programados" },
@@ -46,6 +46,12 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
             </NavLink>
           ))}
         </nav>
+        <div className="pt-4 mt-4 border-t border-primary-800">
+            <button onClick={onLogout} className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-200 hover:bg-primary-800 hover:text-white">
+                <LogOut size={20} />
+                <span>Cerrar Sesión</span>
+            </button>
+        </div>
       </aside>
 
       {/* Sidebar for Mobile/Tablet */}
@@ -80,6 +86,12 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
             </NavLink>
           ))}
         </nav>
+        <div className="pt-4 mt-4 border-t border-primary-800">
+            <button onClick={onLogout} className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-200 hover:bg-primary-800 hover:text-white">
+                <LogOut size={20} />
+                <span>Cerrar Sesión</span>
+            </button>
+        </div>
       </aside>
     </>
   );

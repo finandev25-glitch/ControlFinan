@@ -33,7 +33,8 @@ const ScheduledExpensesPage = ({
   selectedYear,
   selectedMonth,
   onYearChange,
-  onMonthChange
+  onMonthChange,
+  availableYears
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -63,11 +64,15 @@ const ScheduledExpensesPage = ({
       <div className="p-4 sm:p-6 lg:p-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-slate-800">Gastos Programados del Mes</h1>
+            <h1 className="text-3xl font-bold text-slate-800">
+              <span className="hidden sm:inline">Gastos Programados del Mes</span>
+              <span className="sm:hidden">Gastos Programados</span>
+            </h1>
             <p className="mt-1 text-slate-500">Revisa tus compromisos financieros para el período seleccionado.</p>
           </div>
           <div className="flex items-center gap-4">
             <PeriodSelector
+              availableYears={availableYears}
               selectedYear={selectedYear}
               selectedMonth={selectedMonth}
               onYearChange={onYearChange}
@@ -78,7 +83,7 @@ const ScheduledExpensesPage = ({
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md shadow-sm hover:bg-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-500"
             >
               <PlusCircle size={18} />
-              Añadir Gasto Manual
+              Añadir Manual
             </button>
           </div>
         </div>

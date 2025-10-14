@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek, format, startOfDay, endOfDay, subWeeks, startOfYear, eachDayOfInterval } from 'date-fns';
+import { startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek, format, startOfDay, endOfDay, subWeeks, startOfYear, eachDayOfInterval, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import MonthlyComparisonCard from '../components/MonthlyComparisonCard';
 import ExpenseChart from '../components/ExpenseChart';
@@ -10,12 +10,13 @@ import IncomeBreakdownChart from '../components/IncomeBreakdownChart';
 import IntervalToggle from '../components/IntervalToggle';
 import TransactionDetailModal from '../components/TransactionDetailModal';
 import PeriodSelector from '../components/PeriodSelector';
-import { Users, Tag } from 'lucide-react';
+import MemberSelector from '../components/MemberSelector';
+import { Tag } from 'lucide-react';
 import * as Icons from 'lucide-react';
 
 const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
-const AdvancedReportsPage = ({ transactions, members, categories, selectedYear, selectedMonth, onYearChange, onMonthChange }) => {
+const AdvancedReportsPage = ({ transactions, members, categories, selectedYear, selectedMonth, onYearChange, onMonthChange, availableYears }) => {
   const [selectedMemberId, setSelectedMemberId] = useState('all');
   const [selectedCategoryId, setSelectedCategoryId] = useState('all');
   const [timelineCategory, setTimelineCategory] = useState(categories.find(c => c.type === 'Gasto')?.name || 'all');
@@ -240,10 +241,13 @@ const AdvancedReportsPage = ({ transactions, members, categories, selectedYear, 
       <div className="p-4 sm:p-6 lg:p-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-slate-800">Análisis Avanzado</h1>
+            <h1 className="text-3xl font-bold text-slate-800">
+              <span className="hidden sm:inline">Análisis Avanzado</span>
+              <span className="sm:hidden">Análisis</span>
+            </h1>
             <p className="text-slate-500 mt-1">Compara períodos y profundiza en tus finanzas.</p>
           </div>
-          <PeriodSelector selectedYear={selectedYear} selectedMonth={selectedMonth} onYearChange={onYearChange} onMonthChange={onMonthChange} />
+          <PeriodSelector availableYears={availableYears} selectedYear={selectedYear} selectedMonth={selectedMonth} onYearChange={onYearChange} onMonthChange={onMonthChange} />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
@@ -266,20 +270,12 @@ const AdvancedReportsPage = ({ transactions, members, categories, selectedYear, 
           <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200/80 shadow-sm">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold">Distribución de Gastos</h2>
-              <div className="relative">
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                  <Users className="h-5 w-5 text-slate-400" />
-                </div>
-                <select
-                  id="memberFilter"
-                  className="block w-full rounded-md border-slate-300 pl-10 py-2 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                  value={selectedMemberId}
-                  onChange={(e) => setSelectedMemberId(e.target.value)}
-                >
-                  <option value="all">Global</option>
-                  {members.filter(m => m.role !== 'Dependiente').map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                </select>
-              </div>
+              <MemberSelector
+                members={members.filter(m => m.role !== 'Dependiente')}
+                selectedMemberId={selectedMemberId}
+                onMemberChange={setSelectedMemberId}
+                showGlobalOption={true}
+              />
             </div>
             <ExpenseChart data={memberFilteredExpenses} />
           </div>

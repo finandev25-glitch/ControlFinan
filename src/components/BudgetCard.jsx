@@ -1,9 +1,9 @@
 import React from 'react';
-import { Target } from 'lucide-react';
+import { Target, Edit, Trash2 } from 'lucide-react';
 
 const formatCurrency = (amount) => new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(amount);
 
-const BudgetCard = ({ budget, categoryIconMap }) => {
+const BudgetCard = ({ budget, categoryIconMap, onEdit, onDelete }) => {
   const { category, limit_amount: limit, spent } = budget;
   
   const remaining = limit - spent;
@@ -18,12 +18,22 @@ const BudgetCard = ({ budget, categoryIconMap }) => {
   }
 
   return (
-    <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-sm hover:shadow-lg hover:border-primary-300 transition-all duration-300">
-      <div className="flex items-center gap-4 mb-4">
-        <div className="p-3 rounded-full bg-primary-100">
-          <Icon className="h-6 w-6 text-primary-600" />
+    <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-sm hover:shadow-lg hover:border-primary-300 transition-all duration-300 group">
+      <div className="flex items-center justify-between gap-4 mb-4">
+        <div className="flex items-center gap-4">
+          <div className="p-3 rounded-full bg-primary-100">
+            <Icon className="h-6 w-6 text-primary-600" />
+          </div>
+          <h3 className="text-lg font-semibold text-slate-800">{category}</h3>
         </div>
-        <h3 className="text-lg font-semibold text-slate-800">{category}</h3>
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button onClick={onEdit} className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-100 rounded-full" title="Editar">
+                <Edit size={16} />
+            </button>
+            <button onClick={onDelete} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-100 rounded-full" title="Eliminar">
+                <Trash2 size={16} />
+            </button>
+        </div>
       </div>
 
       <div className="space-y-3">

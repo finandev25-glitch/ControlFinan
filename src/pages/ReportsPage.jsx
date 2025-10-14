@@ -36,7 +36,10 @@ const ReportsPage = ({ transactions, cajas, members, categories }) => {
   return (
     <div className="p-4 sm:p-6 lg:p-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-800">Reporte de Transacciones</h1>
+        <h1 className="text-3xl font-bold text-slate-800">
+          <span className="hidden sm:inline">Reporte de Transacciones</span>
+          <span className="sm:hidden">Reportes</span>
+        </h1>
         <p className="mt-1 text-slate-500">Busca, filtra y revisa todas las transacciones.</p>
       </div>
       
