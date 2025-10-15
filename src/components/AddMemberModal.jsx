@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Mail } from 'lucide-react';
 
 const FormInput = ({ id, label, ...props }) => (
     <div>
@@ -27,22 +27,19 @@ const FormSelect = ({ id, label, children, ...props }) => (
     </div>
 );
 
-const AddMemberModal = ({ isOpen, onClose, onSave }) => {
-  const [name, setName] = useState('');
+const AddMemberModal = ({ isOpen, onClose, onInvite }) => {
+  const [email, setEmail] = useState('');
   const [role, setRole] = useState('Aportante');
 
   if (!isOpen) return null;
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!name || !role) {
+    if (!email || !role) {
       alert('Por favor, completa todos los campos.');
       return;
     }
-    onSave({ name, role });
-    onClose();
-    setName('');
-    setRole('Aportante');
+    onInvite({ email, role });
   };
 
   return (
@@ -51,17 +48,18 @@ const AddMemberModal = ({ isOpen, onClose, onSave }) => {
         <button onClick={onClose} className="absolute top-4 right-4 text-slate-500 hover:text-slate-800 transition-colors">
           <X size={24} />
         </button>
-        <h2 className="text-2xl font-bold text-slate-800 mb-2">Añadir Nuevo Miembro</h2>
-        <p className="text-slate-500 mb-6">Completa los detalles del nuevo miembro de la familia.</p>
+        <h2 className="text-2xl font-bold text-slate-800 mb-2">Invitar Nuevo Miembro</h2>
+        <p className="text-slate-500 mb-6">La persona recibirá una invitación por correo para unirse a tu familia.</p>
         
         <form onSubmit={handleSubmit} className="space-y-6">
           <FormInput 
-            id="name" 
-            name="name" 
-            label="Nombre Completo" 
-            placeholder="Ej: Juan Pérez" 
-            value={name} 
-            onChange={(e) => setName(e.target.value)} 
+            id="email" 
+            name="email" 
+            type="email"
+            label="Correo Electrónico" 
+            placeholder="ejemplo@correo.com" 
+            value={email} 
+            onChange={(e) => setEmail(e.target.value)} 
           />
           <FormSelect 
             id="role" 
@@ -85,9 +83,10 @@ const AddMemberModal = ({ isOpen, onClose, onSave }) => {
             </button>
             <button 
               type="submit" 
-              className="px-6 py-2.5 text-sm font-semibold text-white bg-primary-600 border border-transparent rounded-full shadow-sm hover:bg-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-500"
+              className="flex items-center gap-2 px-6 py-2.5 text-sm font-semibold text-white bg-primary-600 border border-transparent rounded-full shadow-sm hover:bg-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-500"
             >
-              Guardar Miembro
+              <Mail size={16} />
+              Enviar Invitación
             </button>
           </div>
         </form>

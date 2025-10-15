@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { PlusCircle, Trash2, Edit, ArrowUp, ArrowDown } from 'lucide-react';
+import { PlusCircle, Trash2, Edit, Mail } from 'lucide-react';
 import ChangeAvatarModal from '../components/ChangeAvatarModal';
 import AddMemberModal from '../components/AddMemberModal';
 import DeleteMemberModal from '../components/DeleteMemberModal';
@@ -9,7 +9,7 @@ const formatCurrency = (amount) => new Intl.NumberFormat('es-PE', { style: 'curr
 const MembersPage = ({
   members,
   transactions,
-  onAddMember,
+  inviteMember,
   onDeleteMember,
   onUpdateMemberAvatar,
 }) => {
@@ -22,8 +22,8 @@ const MembersPage = ({
   const memberSummary = useMemo(() => {
     return members.map(member => {
       const memberTransactions = transactions.filter(t => t.member_id === member.id);
-      const income = memberTransactions.filter(t => t.type === 'Ingreso').reduce((s, t) => s + t.amount, 0);
-      const expenses = memberTransactions.filter(t => t.type === 'Gasto').reduce((s, t) => s + t.amount, 0);
+      const income = memberTransactions.filter(t => t.type === 'Ingreso' && t.category !== 'Transferencia' && t.category !== 'Transferencia Interna').reduce((s, t) => s + t.amount, 0);
+      const expenses = memberTransactions.filter(t => t.type === 'Gasto' && t.category !== 'Transferencia' && t.category !== 'Transferencia Interna').reduce((s, t) => s + t.amount, 0);
       const contribution = income - expenses;
       return { ...member, income, expenses, contribution };
     });
@@ -34,8 +34,13 @@ const MembersPage = ({
     setAvatarModalOpen(true);
   };
 
-  const handleSaveMember = (data) => {
-    onAddMember(data);
+  const handleInviteMember = async (data) => {
+    const { error } = await inviteMember(data);
+    if (error) {
+      alert(`Error al enviar la invitación: ${error.message}`);
+    } else {
+      alert('¡Invitación enviada con éxito!');
+    }
     setIsAddMemberModalOpen(false);
   };
 
@@ -58,20 +63,20 @@ const MembersPage = ({
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
           <div>
             <h1 className="text-3xl font-bold text-slate-800">Gestión de Miembros</h1>
-            <p className="mt-1 text-slate-500">Añade, edita y visualiza los miembros de tu familia.</p>
+            <p className="mt-1 text-slate-500">Invita, edita y visualiza los miembros de tu familia.</p>
           </div>
           <button
             onClick={() => setIsAddMemberModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md shadow-sm hover:bg-primary-700"
           >
-            <PlusCircle size={18} />
-            Añadir Miembro
+            <Mail size={18} />
+            Invitar Miembro
           </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {memberSummary.map(member => (
-            <div key={member.id} className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-sm">
+            <div key={member.id} className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-sm flex flex-col">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-4">
                   <div className="relative group">
@@ -96,19 +101,24 @@ const MembersPage = ({
                   <Trash2 size={18} />
                 </button>
               </div>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-slate-600 flex items-center gap-2"><ArrowUp size={16} className="text-green-500" /> Ingresos</span>
-                  <span className="font-semibold text-green-600">{formatCurrency(member.income)}</span>
+              
+              <div className="bg-slate-50 rounded-lg p-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-slate-500">Ingresos</span>
+                    <span className="font-medium text-green-600">{formatCurrency(member.income)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-slate-500">Gastos</span>
+                    <span className="font-medium text-red-600">{formatCurrency(member.expenses)}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-slate-600 flex items-center gap-2"><ArrowDown size={16} className="text-red-500" /> Gastos</span>
-                  <span className="font-semibold text-red-600">{formatCurrency(member.expenses)}</span>
-                </div>
-                <div className="border-t border-slate-200 my-2"></div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-bold text-slate-700">Contribución Neta</span>
-                  <span className={`font-bold text-lg ${member.contribution >= 0 ? 'text-slate-800' : 'text-red-600'}`}>
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-dashed border-slate-200">
+                <div className="flex justify-between items-baseline">
+                  <span className="text-sm font-medium text-slate-600">Contribución Neta</span>
+                  <span className={`font-bold text-2xl ${member.contribution >= 0 ? 'text-slate-800' : 'text-red-600'}`}>
                     {formatCurrency(member.contribution)}
                   </span>
                 </div>
@@ -117,7 +127,7 @@ const MembersPage = ({
           ))}
         </div>
       </div>
-      <AddMemberModal isOpen={isAddMemberModalOpen} onClose={() => setIsAddMemberModalOpen(false)} onSave={handleSaveMember} />
+      <AddMemberModal isOpen={isAddMemberModalOpen} onClose={() => setIsAddMemberModalOpen(false)} onInvite={handleInviteMember} />
       <ChangeAvatarModal isOpen={isAvatarModalOpen} onClose={() => setAvatarModalOpen(false)} member={selectedMember} onSave={onUpdateMemberAvatar} />
       <DeleteMemberModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDeleteConfirm} memberName={memberToDelete?.name} />
     </>

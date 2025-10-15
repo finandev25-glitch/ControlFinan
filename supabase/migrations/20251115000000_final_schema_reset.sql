@@ -1,62 +1,81 @@
--- STEP 1: Clean up everything in the correct order to avoid dependency issues.
+-- =============================================
+-- RESET ESQUEMA COMPLETO
+-- =============================================
+-- Este script eliminará y reconstruirá todas las tablas principales de la aplicación.
+-- ¡ADVERTENCIA! ESTO BORRARÁ TODOS LOS DATOS EN LAS TABLAS AFECTADAS.
+-- =============================================
+
+-- Desactivar RLS temporalmente para evitar problemas de permisos durante el borrado
+ALTER TABLE public.user_profiles DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.family_members DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.families DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.cajas DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.categories DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.transactions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.budgets DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.scheduled_expenses DISABLE ROW LEVEL SECURITY;
+
+-- Eliminar políticas existentes para evitar conflictos de dependencia
+DROP POLICY IF EXISTS "Users can see profiles of their family members" ON public.user_profiles;
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.user_profiles;
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.user_profiles;
+DROP POLICY IF EXISTS "Enable read access for family members" ON public.families;
+DROP POLICY IF EXISTS "Enable all access for family members" ON public.family_members;
+DROP POLICY IF EXISTS "Enable all access for family members" ON public.cajas;
+DROP POLICY IF EXISTS "Enable all access for family members" ON public.categories;
+DROP POLICY IF EXISTS "Enable all access for family members" ON public.transactions;
+DROP POLICY IF EXISTS "Enable all access for family members" ON public.budgets;
+DROP POLICY IF EXISTS "Enable all access for family members" ON public.scheduled_expenses;
+
+-- Eliminar el trigger y la función para recrearlos
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-DROP FUNCTION IF EXISTS public.handle_new_user();
-DROP FUNCTION IF EXISTS public.get_my_family_ids();
-DROP FUNCTION IF EXISTS public.is_family_admin(uuid);
-DROP TABLE IF EXISTS public.transactions;
-DROP TABLE IF EXISTS public.budgets;
-DROP TABLE IF EXISTS public.scheduled_expenses;
-DROP TABLE IF EXISTS public.cajas;
-DROP TABLE IF EXISTS public.categories;
-DROP TABLE IF EXISTS public.family_members;
-DROP TABLE IF EXISTS public.members;
-DROP TABLE IF EXISTS public.families;
-DROP TABLE IF EXISTS public.user_profiles;
-DROP TYPE IF EXISTS public.family_role;
+DROP FUNCTION IF EXISTS public.handle_new_user;
 
--- STEP 2: Create all tables from scratch.
-CREATE TABLE public.user_profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  full_name TEXT,
-  avatar_url TEXT
-);
-COMMENT ON TABLE public.user_profiles IS 'Stores public profile information for users.';
+-- Eliminar tablas en orden inverso de dependencia, usando CASCADE para forzar el borrado de dependencias
+DROP TABLE IF EXISTS public.budgets CASCADE;
+DROP TABLE IF EXISTS public.scheduled_expenses CASCADE;
+DROP TABLE IF EXISTS public.transactions CASCADE;
+DROP TABLE IF EXISTS public.categories CASCADE;
+DROP TABLE IF EXISTS public.cajas CASCADE;
+DROP TABLE IF EXISTS public.family_members CASCADE;
+DROP TABLE IF EXISTS public.user_profiles CASCADE;
+DROP TABLE IF EXISTS public.families CASCADE;
 
+-- =============================================
+-- RECONSTRUCCIÓN DEL ESQUEMA
+-- =============================================
+
+-- Tabla de Familias
 CREATE TABLE public.families (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  owner_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    name TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
-COMMENT ON TABLE public.families IS 'Stores information about each family group.';
 
-CREATE TYPE public.family_role AS ENUM ('admin', 'member');
+-- Tabla de Perfiles de Usuario
+CREATE TABLE public.user_profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    full_name TEXT,
+    avatar_url TEXT,
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Tabla de Miembros de Familia (tabla de unión)
 CREATE TABLE public.family_members (
-  id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-  family_id UUID NOT NULL REFERENCES public.families(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  role public.family_role NOT NULL DEFAULT 'member',
-  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
-  UNIQUE(family_id, user_id)
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    family_id UUID REFERENCES public.families(id) ON DELETE CASCADE NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('Aportante Principal', 'Aportante', 'Dependiente')),
+    created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+    PRIMARY KEY (user_id, family_id)
 );
-COMMENT ON TABLE public.family_members IS 'Links users to families and defines their role within the family.';
 
-CREATE TABLE public.members (
-    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    family_id UUID NOT NULL REFERENCES public.families(id) ON DELETE CASCADE,
-    name TEXT NOT NULL,
-    role TEXT,
-    avatar TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
-);
-COMMENT ON TABLE public.members IS 'Stores non-user members or dependents within a family for tracking purposes.';
-
+-- Tabla de Cajas (Efectivo, Cuentas, Tarjetas, etc.)
 CREATE TABLE public.cajas (
-    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    family_id UUID NOT NULL REFERENCES public.families(id) ON DELETE CASCADE,
-    member_id BIGINT REFERENCES public.members(id) ON DELETE SET NULL,
-    name TEXT NOT NULL,
+    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    family_id UUID REFERENCES public.families(id) ON DELETE CASCADE NOT NULL,
+    member_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     type TEXT NOT NULL,
+    name TEXT NOT NULL,
     bank TEXT,
     account_number TEXT,
     currency TEXT DEFAULT 'PEN',
@@ -68,140 +87,154 @@ CREATE TABLE public.cajas (
     total_installments INT,
     paid_installments INT,
     payment_day INT,
-    monthly_payment NUMERIC,
-    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+    monthly_payment NUMERIC
 );
-COMMENT ON TABLE public.cajas IS 'Stores all cash boxes, bank accounts, credit cards, and loans for a family.';
 
+-- Tabla de Categorías
 CREATE TABLE public.categories (
-    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    family_id UUID NOT NULL REFERENCES public.families(id) ON DELETE CASCADE,
+    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    family_id UUID REFERENCES public.families(id) ON DELETE CASCADE NOT NULL,
     name TEXT NOT NULL,
-    type TEXT NOT NULL,
+    type TEXT NOT NULL CHECK (type IN ('Ingreso', 'Gasto')),
     icon_name TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     UNIQUE(family_id, name, type)
 );
-COMMENT ON TABLE public.categories IS 'Stores income and expense categories for a family.';
 
+-- Tabla de Transacciones
 CREATE TABLE public.transactions (
-    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    family_id UUID NOT NULL REFERENCES public.families(id) ON DELETE CASCADE,
-    member_id BIGINT REFERENCES public.members(id) ON DELETE SET NULL,
-    caja_id BIGINT NOT NULL REFERENCES public.cajas(id) ON DELETE CASCADE,
-    description TEXT NOT NULL,
-    amount NUMERIC NOT NULL,
-    type TEXT NOT NULL,
-    category TEXT NOT NULL,
+    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    family_id UUID REFERENCES public.families(id) ON DELETE CASCADE NOT NULL,
+    member_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    caja_id BIGINT REFERENCES public.cajas(id) ON DELETE CASCADE NOT NULL,
     date TIMESTAMPTZ NOT NULL,
-    transfer_id UUID,
-    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+    description TEXT,
+    amount NUMERIC NOT NULL,
+    type TEXT NOT NULL CHECK (type IN ('Ingreso', 'Gasto')),
+    category TEXT NOT NULL,
+    transfer_id UUID
 );
-COMMENT ON TABLE public.transactions IS 'Stores all financial transactions for a family.';
 
+-- Tabla de Presupuestos
 CREATE TABLE public.budgets (
-    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    family_id UUID NOT NULL REFERENCES public.families(id) ON DELETE CASCADE,
+    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    family_id UUID REFERENCES public.families(id) ON DELETE CASCADE NOT NULL,
     category TEXT NOT NULL,
     limit_amount NUMERIC NOT NULL,
     year INT NOT NULL,
     month INT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
     UNIQUE(family_id, category, year, month)
 );
-COMMENT ON TABLE public.budgets IS 'Stores monthly budgets for expense categories.';
 
+-- Tabla de Gastos Programados
 CREATE TABLE public.scheduled_expenses (
-    id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    family_id UUID NOT NULL REFERENCES public.families(id) ON DELETE CASCADE,
+    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    family_id UUID REFERENCES public.families(id) ON DELETE CASCADE NOT NULL,
     description TEXT NOT NULL,
     amount NUMERIC NOT NULL,
     category TEXT NOT NULL,
     day_of_month INT NOT NULL,
-    member_id BIGINT REFERENCES public.members(id) ON DELETE SET NULL,
-    caja_id BIGINT REFERENCES public.cajas(id) ON DELETE SET NULL,
-    credit_card_id BIGINT REFERENCES public.cajas(id) ON DELETE SET NULL,
-    is_automatic BOOLEAN DEFAULT FALSE,
-    is_credit_card_payment BOOLEAN DEFAULT FALSE,
+    member_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    caja_id BIGINT REFERENCES public.cajas(id) ON DELETE CASCADE,
     confirmed_months TEXT[],
-    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+    is_automatic BOOLEAN DEFAULT false,
+    is_credit_card_payment BOOLEAN DEFAULT false,
+    credit_card_id BIGINT REFERENCES public.cajas(id) ON DELETE SET NULL
 );
-COMMENT ON TABLE public.scheduled_expenses IS 'Stores recurring monthly expenses.';
 
--- STEP 3: Create functions and triggers for automation.
+-- =============================================
+-- FUNCIONES Y TRIGGERS
+-- =============================================
+
+-- Función para manejar nuevos usuarios
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
+RETURNS TRIGGER AS $$
 DECLARE
   new_family_id UUID;
-  new_member_id BIGINT;
 BEGIN
+  -- Crear un perfil de usuario
   INSERT INTO public.user_profiles (id, full_name, avatar_url)
   VALUES (new.id, new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'avatar_url');
   
-  INSERT INTO public.families (name, owner_id)
-  VALUES (new.raw_user_meta_data->>'full_name' || '''s Family', new.id)
+  -- Crear una nueva familia para el usuario
+  INSERT INTO public.families (name)
+  VALUES ((new.raw_user_meta_data->>'full_name') || '''s Family')
   RETURNING id INTO new_family_id;
-
-  INSERT INTO public.family_members (family_id, user_id, role)
-  VALUES (new_family_id, new.id, 'admin');
-
-  INSERT INTO public.members (family_id, name, avatar, role)
-  VALUES (new_family_id, new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'avatar_url', 'Aportante Principal')
-  RETURNING id INTO new_member_id;
-
-  INSERT INTO public.cajas (family_id, member_id, name, type)
-  VALUES (new_family_id, new_member_id, 'Efectivo', 'Efectivo');
-
-  INSERT INTO public.categories (family_id, name, type, icon_name) VALUES
-    (new_family_id, 'Alimentación', 'Gasto', 'ShoppingBasket'), (new_family_id, 'Transporte', 'Gasto', 'Car'),
-    (new_family_id, 'Vivienda', 'Gasto', 'Home'), (new_family_id, 'Ocio', 'Gasto', 'Smile'),
-    (new_family_id, 'Salud', 'Gasto', 'HeartPulse'), (new_family_id, 'Educación', 'Gasto', 'GraduationCap'),
-    (new_family_id, 'Servicios', 'Gasto', 'Home'), (new_family_id, 'Suscripciones', 'Gasto', 'Smile'),
-    (new_family_id, 'Nómina', 'Ingreso', 'Briefcase'), (new_family_id, 'Beneficios', 'Ingreso', 'Landmark'),
-    (new_family_id, 'Ventas', 'Ingreso', 'TrendingUp'), (new_family_id, 'Regalo', 'Ingreso', 'Gift'),
-    (new_family_id, 'Otros', 'Ingreso', 'MoreHorizontal'), (new_family_id, 'Otros', 'Gasto', 'MoreHorizontal'),
-    (new_family_id, 'Transferencia', 'Gasto', 'ArrowLeftRight'), (new_family_id, 'Transferencia', 'Ingreso', 'ArrowLeftRight'),
-    (new_family_id, 'Transferencia Interna', 'Gasto', 'ArrowLeftRight'), (new_family_id, 'Transferencia Interna', 'Ingreso', 'ArrowLeftRight');
+  
+  -- Asignar al usuario a la nueva familia como Aportante Principal
+  INSERT INTO public.family_members (user_id, family_id, role)
+  VALUES (new.id, new_family_id, 'Aportante Principal');
+  
+  -- Crear una caja de efectivo inicial para la familia
+  INSERT INTO public.cajas (family_id, type, name)
+  VALUES (new_family_id, 'Efectivo', 'Efectivo General');
+  
   RETURN new;
 END;
-$$;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+-- Trigger para ejecutar la función en nuevos registros de auth.users
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- STEP 4: Enable RLS and define policies for all tables.
-CREATE OR REPLACE FUNCTION public.get_my_family_ids()
-RETURNS SETOF UUID LANGUAGE sql SECURITY INVOKER AS $$
-  SELECT family_id FROM public.family_members WHERE user_id = auth.uid();
-$$;
+-- =============================================
+-- SEGURIDAD (RLS)
+-- =============================================
 
-CREATE OR REPLACE FUNCTION public.is_family_admin(p_family_id UUID)
-RETURNS BOOLEAN LANGUAGE sql SECURITY INVOKER AS $$
-  SELECT EXISTS (SELECT 1 FROM public.family_members WHERE user_id = auth.uid() AND family_id = p_family_id AND role = 'admin');
-$$;
-
-ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
+-- Habilitar RLS en todas las tablas
 ALTER TABLE public.families ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.family_members ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cajas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.budgets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.scheduled_expenses ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can see profiles of their family members" ON public.user_profiles FOR SELECT USING (id IN (SELECT user_id FROM public.family_members WHERE family_id IN (SELECT get_my_family_ids())));
-CREATE POLICY "Users can update their own profile" ON public.user_profiles FOR UPDATE USING (id = auth.uid());
-CREATE POLICY "Users can see families they are a member of" ON public.families FOR SELECT USING (id IN (SELECT get_my_family_ids()));
-CREATE POLICY "Family admins can update their family name" ON public.families FOR UPDATE USING (is_family_admin(id));
-CREATE POLICY "Users can see members of their own family" ON public.family_members FOR SELECT USING (family_id IN (SELECT get_my_family_ids()));
-CREATE POLICY "Admins can manage members in their family" ON public.family_members FOR ALL USING (is_family_admin(family_id)) WITH CHECK (is_family_admin(family_id));
-CREATE POLICY "Family members can manage their family's data" ON public.members FOR ALL USING (family_id IN (SELECT get_my_family_ids()));
-CREATE POLICY "Family members can manage their family's data" ON public.cajas FOR ALL USING (family_id IN (SELECT get_my_family_ids()));
-CREATE POLICY "Family members can manage their family's data" ON public.categories FOR ALL USING (family_id IN (SELECT get_my_family_ids()));
-CREATE POLICY "Family members can manage their family's data" ON public.transactions FOR ALL USING (family_id IN (SELECT get_my_family_ids()));
-CREATE POLICY "Family members can manage their family's data" ON public.budgets FOR ALL USING (family_id IN (SELECT get_my_family_ids()));
-CREATE POLICY "Family members can manage their family's data" ON public.scheduled_expenses FOR ALL USING (family_id IN (SELECT get_my_family_ids()));
+-- Políticas de Seguridad
+CREATE POLICY "Enable read access for family members" ON public.families
+FOR SELECT USING (id IN (SELECT family_id FROM public.family_members WHERE user_id = auth.uid()));
+
+CREATE POLICY "Users can insert their own profile" ON public.user_profiles
+FOR INSERT WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "Users can update their own profile" ON public.user_profiles
+FOR UPDATE USING (auth.uid() = id);
+
+CREATE POLICY "Users can see profiles of their family members" ON public.user_profiles
+FOR SELECT USING (id IN (
+    SELECT user_id FROM public.family_members WHERE family_id IN (
+        SELECT family_id FROM public.family_members WHERE user_id = auth.uid()
+    )
+));
+
+CREATE POLICY "Enable all access for family members" ON public.family_members
+FOR ALL USING (family_id IN (SELECT family_id FROM public.family_members WHERE user_id = auth.uid()));
+
+CREATE POLICY "Enable all access for family members" ON public.cajas
+FOR ALL USING (family_id IN (SELECT family_id FROM public.family_members WHERE user_id = auth.uid()));
+
+CREATE POLICY "Enable all access for family members" ON public.categories
+FOR ALL USING (family_id IN (SELECT family_id FROM public.family_members WHERE user_id = auth.uid()));
+
+CREATE POLICY "Enable all access for family members" ON public.transactions
+FOR ALL USING (family_id IN (SELECT family_id FROM public.family_members WHERE user_id = auth.uid()));
+
+CREATE POLICY "Enable all access for family members" ON public.budgets
+FOR ALL USING (family_id IN (SELECT family_id FROM public.family_members WHERE user_id = auth.uid()));
+
+CREATE POLICY "Enable all access for family members" ON public.scheduled_expenses
+FOR ALL USING (family_id IN (SELECT family_id FROM public.family_members WHERE user_id = auth.uid()));
+
+-- Vista segura para miembros de familia (opcional pero recomendado)
+CREATE OR REPLACE VIEW public.family_members_view AS
+SELECT
+    fm.user_id,
+    fm.family_id,
+    fm.role,
+    p.full_name,
+    p.avatar_url
+FROM
+    public.family_members fm
+LEFT JOIN
+    public.user_profiles p ON fm.user_id = p.id;

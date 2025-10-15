@@ -1,15 +1,24 @@
 import React, { useRef, useEffect } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
-import { PiggyBank, LayoutDashboard, ArrowLeftRight, Wallet, Target, BarChart3, FileText, X, ClipboardCheck, CalendarClock, Settings, LogOut, Users, Home } from 'lucide-react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { PiggyBank, LayoutDashboard, ArrowLeftRight, Wallet, Target, BarChart3, FileText, X, ClipboardCheck, CalendarClock, Settings, Users, LogOut } from 'lucide-react';
+import { supabase } from '../supabaseClient';
 
-const Sidebar = ({ sidebarOpen, setSidebarOpen, onLogout, family }) => {
+const Sidebar = ({ sidebarOpen, setSidebarOpen, family }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { pathname } = location;
   const sidebar = useRef(null);
 
   useEffect(() => {
-    setSidebarOpen(false);
+    if(sidebarOpen) {
+      setSidebarOpen(false);
+    }
   }, [pathname, setSidebarOpen]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/login');
+  };
 
   const navLinkClass = ({ isActive }) =>
     `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
@@ -28,7 +37,6 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, onLogout, family }) => {
     { to: "/reportes", icon: BarChart3, text: "Reportes" },
     { to: "/analisis", icon: FileText, text: "Análisis" },
     { to: "/miembros", icon: Users, text: "Miembros" },
-    { to: "/familia", icon: Home, text: "Familia" },
     { to: "/configuracion", icon: Settings, text: "Configuración" },
   ];
 
@@ -44,18 +52,18 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, onLogout, family }) => {
           {family && <p className="text-sm text-primary-300 truncate" title={family.name}>{family.name}</p>}
         </div>
         <nav className="flex-1 space-y-2">
-          {navLinks.map(link => (
-            <NavLink key={link.to} to={link.to} className={navLinkClass}>
+          {navLinks.map((link, index) => (
+            <NavLink key={index} to={link.to} className={navLinkClass}>
               <link.icon size={20} />
               <span>{link.text}</span>
             </NavLink>
           ))}
         </nav>
-        <div className="pt-4 mt-4 border-t border-primary-800">
-            <button onClick={onLogout} className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-200 hover:bg-primary-800 hover:text-white">
-                <LogOut size={20} />
-                <span>Cerrar Sesión</span>
-            </button>
+        <div className="mt-auto">
+          <button onClick={handleLogout} className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-200 hover:bg-primary-800 hover:text-white">
+            <LogOut size={20} />
+            <span>Cerrar Sesión</span>
+          </button>
         </div>
       </aside>
 
@@ -87,18 +95,18 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, onLogout, family }) => {
           {family && <p className="text-sm text-primary-300 truncate" title={family.name}>{family.name}</p>}
         </div>
         <nav className="flex-1 space-y-2">
-          {navLinks.map(link => (
-            <NavLink key={link.to} to={link.to} className={navLinkClass}>
+          {navLinks.map((link, index) => (
+            <NavLink key={index} to={link.to} className={navLinkClass}>
               <link.icon size={20} />
               <span>{link.text}</span>
             </NavLink>
           ))}
         </nav>
-        <div className="pt-4 mt-4 border-t border-primary-800">
-            <button onClick={onLogout} className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-200 hover:bg-primary-800 hover:text-white">
-                <LogOut size={20} />
-                <span>Cerrar Sesión</span>
-            </button>
+        <div className="mt-auto">
+          <button onClick={handleLogout} className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-200 hover:bg-primary-800 hover:text-white">
+            <LogOut size={20} />
+            <span>Cerrar Sesión</span>
+          </button>
         </div>
       </aside>
     </>

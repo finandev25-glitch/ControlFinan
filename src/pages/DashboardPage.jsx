@@ -9,11 +9,12 @@ import ProjectedBalanceCard from '../components/ProjectedBalanceCard';
 import ProjectedExpensesModal from '../components/ProjectedExpensesModal';
 import TransferDetailModal from '../components/TransferDetailModal';
 import MemberSelector from '../components/MemberSelector';
+import PendingExpensesSection from '../components/PendingExpensesSection';
 import { Tag } from 'lucide-react';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
 import * as Icons from 'lucide-react';
 
-const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpenses, categories, selectedYear, selectedMonth, onYearChange, onMonthChange, availableYears }) => {
+const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpenses, categories, selectedYear, selectedMonth, onYearChange, onMonthChange, availableYears, onReviewExpense }) => {
   const [selectedMemberId, setSelectedMemberId] = useState('all');
   const [isProjectedExpensesModalOpen, setProjectedExpensesModalOpen] = useState(false);
   const [isTransferModalOpen, setTransferModalOpen] = useState(false);
@@ -35,6 +36,7 @@ const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpense
     recentTransactionsData,
     projectedBalanceData,
     netTransfersDetails,
+    pendingExpenses,
   } = useMemo(() => {
     const selectedDate = new Date(selectedYear, selectedMonth);
     const dateRange = {
@@ -97,11 +99,14 @@ const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpense
     
     const recentWithAvatars = currentTransactions.slice(0, 5).map(t => ({
         ...t,
+        memberName: members.find(m => m.id === t.member_id)?.name || 'N/A',
         memberAvatar: members.find(m => m.id === t.member_id)?.avatar,
     }));
 
-    const totalBudgetLimit = budgets.reduce((sum, b) => sum + b.limit_amount, 0);
-    const budgetsWithSpending = budgets.map(budget => {
+    const monthlyBudgets = budgets.filter(b => b.year === selectedYear && b.month === selectedMonth);
+
+    const totalBudgetLimit = monthlyBudgets.reduce((sum, b) => sum + b.limit_amount, 0);
+    const budgetsWithSpending = monthlyBudgets.map(budget => {
       const spent = currentTransactions
         .filter(t => t.type === 'Gasto' && t.category === budget.category)
         .reduce((sum, t) => sum + t.amount, 0);
@@ -168,6 +173,7 @@ const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpense
         details: projectedExpensesWithDetails,
       },
       netTransfersDetails,
+      pendingExpenses: pendingScheduledExpenses,
     };
   }, [transactions, scheduledExpenses, selectedYear, selectedMonth, selectedMemberId, members, budgets, cajas, categories, categoryIconMap]);
 
@@ -197,33 +203,42 @@ const DashboardPage = ({ transactions, members, budgets, cajas, scheduledExpense
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <BalanceSummaryCard 
-            summary={summary} 
-            onDetailsClick={handleOpenTransferDetails} 
-          />
-          <ProjectedBalanceCard 
-            data={projectedBalanceData} 
-            onDetailsClick={() => setProjectedExpensesModalOpen(true)}
-          />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <BalanceSummaryCard 
+              summary={summary} 
+              onDetailsClick={handleOpenTransferDetails} 
+            />
+            <ProjectedBalanceCard 
+              data={projectedBalanceData} 
+              onDetailsClick={() => setProjectedExpensesModalOpen(true)}
+            />
+          </div>
+          <div className="lg:col-span-1">
+            <PendingExpensesSection
+              pendingExpenses={pendingExpenses}
+              onReviewExpense={onReviewExpense}
+              members={members}
+            />
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-sm">
-            <h2 className="text-lg font-semibold mb-4">Flujo de Caja</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          <div className="lg:col-span-3 bg-white p-6 rounded-xl border border-slate-200/80 shadow-sm">
+            <h2 className="text-lg font-semibold mb-4">Flujo de Caja Mensual</h2>
             <CashFlowChart data={cashFlowData} />
           </div>
-          <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-sm">
+          <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200/80 shadow-sm">
             <h2 className="text-lg font-semibold mb-4">Distribución de Gastos</h2>
             <ExpenseChart data={expenseChartData} />
           </div>
-          <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-sm">
-              <h2 className="text-lg font-semibold mb-4">Resumen de Presupuestos</h2>
-              <BudgetOverview data={budgetOverviewData} />
-          </div>
-          <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-sm">
+          <div className="lg:col-span-3 bg-white p-6 rounded-xl border border-slate-200/80 shadow-sm">
               <h2 className="text-lg font-semibold mb-4">Transacciones Recientes</h2>
               <RecentTransactionsList transactions={recentTransactionsData} />
+          </div>
+          <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200/80 shadow-sm">
+              <h2 className="text-lg font-semibold mb-4">Resumen de Presupuestos</h2>
+              <BudgetOverview data={budgetOverviewData} />
           </div>
         </div>
       </div>

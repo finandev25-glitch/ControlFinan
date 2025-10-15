@@ -1,19 +1,28 @@
 import React from 'react';
-import { Outlet } from 'react-router-dom';
 import { PiggyBank } from 'lucide-react';
 
-const AuthLayout = () => {
+const AuthLayout = ({ children, title, subtitle }) => {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
-      <div className="mb-8 flex flex-col items-center">
-        <div className="flex items-center gap-3 mb-2">
+    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-2xl">
+        <div className="flex justify-center items-center gap-3">
           <PiggyBank className="h-12 w-12 text-primary-600" />
-          <span className="text-4xl font-bold text-slate-800">MiSaldo</span>
+          <h1 className="text-4xl font-bold text-primary-900">MiSaldo</h1>
         </div>
-        <p className="text-slate-500">Tu asistente financiero familiar.</p>
+        <div className="text-center mt-6">
+          <h2 className="text-2xl font-bold tracking-tight text-gray-900">
+            {title}
+          </h2>
+          <p className="mt-2 text-sm text-gray-600">
+            {subtitle}
+          </p>
+        </div>
       </div>
-      <div className="w-full max-w-md">
-        <Outlet />
+
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-2xl">
+        <div className="bg-white py-8 px-4 shadow-lg sm:rounded-2xl sm:px-10 border border-slate-200/80">
+          {children}
+        </div>
       </div>
     </div>
   );

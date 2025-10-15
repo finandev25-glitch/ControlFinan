@@ -15,6 +15,17 @@ const Notifications = ({ pendingExpenses, onReviewExpense, members, cajas, categ
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
+  // Safety check to prevent crash if props are not ready
+  if (!pendingExpenses || !categories) {
+    return (
+      <div className="relative">
+        <button className="relative p-2 rounded-full text-slate-500 hover:bg-slate-200 hover:text-slate-800">
+          <Bell className="h-6 w-6" />
+        </button>
+      </div>
+    );
+  }
+
   const categoryIconMap = useMemo(() => {
     if (!categories) return {};
     return categories.reduce((acc, cat) => {

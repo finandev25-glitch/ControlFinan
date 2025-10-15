@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '../supabaseClient';
-import { faker } from '@faker-js/faker';
 import { Wallet, Landmark, CreditCard, University } from 'lucide-react';
+import { format } from 'date-fns';
 
 const cajaIconMap = {
   'Efectivo': Wallet,
@@ -11,10 +11,8 @@ const cajaIconMap = {
 };
 
 export const useStore = create((set, get) => ({
-  // State
   session: null,
   family: null,
-  familyMembers: [],
   members: [],
   transactions: [],
   cajas: [],
@@ -22,380 +20,295 @@ export const useStore = create((set, get) => ({
   scheduledExpenses: [],
   categories: [],
   loading: true,
+  error: null,
+  errorMessage: null,
   selectedYear: new Date().getFullYear(),
   selectedMonth: new Date().getMonth(),
 
-  // Actions
   setSession: (session) => set({ session }),
   setSelectedYear: (year) => set({ selectedYear: year }),
   setSelectedMonth: (month) => set({ selectedMonth: month }),
 
-  clearData: () => set({
-    family: null,
-    familyMembers: [],
-    members: [],
-    transactions: [],
-    cajas: [],
-    budgets: [],
-    scheduledExpenses: [],
-    categories: [],
-    loading: false,
-  }),
-
-  fetchInitialData: async (user) => {
-    if (!user) {
-      get().clearData();
+  fetchInitialData: async () => {
+    set({ loading: true, error: null, errorMessage: null });
+    const { session } = get();
+    if (!session) {
+      set({ loading: false });
       return;
     }
-    set({ loading: true });
 
     try {
-      // 1. Check for family entry
-      const { data: familyMemberEntry, error: familyError } = await supabase
+      let familyId;
+
+      // Step 1: Check if user belongs to a family.
+      const { data: familyMemberData, error: familyMemberError } = await supabase
         .from('family_members')
-        .select('*, families(*)')
-        .eq('user_id', user.id)
-        .maybeSingle();
+        .select('family_id')
+        .eq('user_id', session.user.id)
+        .single();
 
-      // Handle network errors or other DB errors during the first fetch
-      if (familyError) {
-        console.error("Error fetching family:", familyError);
-        set({ loading: false }); // Stop on definitive error
-        return;
+      // If no family member record, it's a new user.
+      if (familyMemberError && familyMemberError.code === 'PGRST116') {
+        // Step 1.1: Try to accept an invitation.
+        const { error: rpcError } = await supabase.rpc('accept_invitation');
+        if (rpcError) {
+          console.error("Error accepting invitation:", rpcError);
+        }
+
+        // Step 1.2: Re-check for family membership after trying to accept.
+        const { data: updatedFamilyMemberData, error: updatedFamilyMemberError } = await supabase
+          .from('family_members')
+          .select('family_id')
+          .eq('user_id', session.user.id)
+          .single();
+        
+        // If still no family, they are a creator and need to go to setup.
+        if (updatedFamilyMemberError) {
+          console.log("New user without invitation detected. Redirecting to setup.");
+          set({ loading: false, family: null });
+          return;
+        }
+
+        // If they now have a family, proceed with the new family ID.
+        familyId = updatedFamilyMemberData.family_id;
+
+      } else if (familyMemberError) {
+        // Any other error during the initial check is a problem.
+        throw familyMemberError;
+      } else {
+        // User already belongs to a family.
+        familyId = familyMemberData.family_id;
       }
 
-      // Handle case where user is new and setup is not yet complete
-      if (!familyMemberEntry || !familyMemberEntry.families) {
-        console.log("Family data not ready, retrying in 2 seconds...");
-        setTimeout(() => get().fetchInitialData(user), 2000); // Retry
-        return; // Keep loading state as is and exit
-      }
-
-      // 2. Family found, proceed to fetch all related data
-      const userFamily = familyMemberEntry.families;
-      const familyId = userFamily.id;
-
-      const [
-        { data: finalFamilyMembers, error: familyMembersError },
-        { data: finalMembers, error: membersError },
-        { data: finalCajas, error: cajasError },
-        { data: finalTransactions, error: transactionsError },
-        { data: finalBudgets, error: budgetsError },
-        { data: finalScheduled, error: scheduledError },
-        { data: finalCategories, error: categoriesError }
-      ] = await Promise.all([
-        supabase.from('family_members').select('*, user_profiles:user_id(*)').eq('family_id', familyId),
-        supabase.from('members').select('*').eq('family_id', familyId),
-        supabase.from('cajas').select('*').eq('family_id', familyId),
-        supabase.from('transactions').select('*, members(name, avatar)').eq('family_id', familyId).order('date', { ascending: false }),
-        supabase.from('budgets').select('*').eq('family_id', familyId),
-        supabase.from('scheduled_expenses').select('*').eq('family_id', familyId),
-        supabase.from('categories').select('*').eq('family_id', familyId)
-      ]);
+      // Step 2: Fetch all data in parallel now that we have a family ID.
+      const dataSources = {
+        family: supabase.from('families').select('*').eq('id', familyId).single(),
+        members: supabase.from('family_members_view').select('user_id, role, full_name, avatar_url').eq('family_id', familyId),
+        transactions: supabase.from('transactions').select('id, date, description, member_id, caja_id, type, category, amount, transfer_id').eq('family_id', familyId),
+        cajas: supabase.from('cajas').select('id, type, name, bank, account_number, currency, card_number, credit_line, closing_day, payment_due_date, loan_purpose, total_installments, paid_installments, payment_day, monthly_payment, member_id').eq('family_id', familyId),
+        budgets: supabase.from('budgets').select('id, category, limit_amount, year, month').eq('family_id', familyId),
+        scheduledExpenses: supabase.from('scheduled_expenses').select('id, description, amount, category, day_of_month, member_id, caja_id, confirmed_months, is_automatic, is_credit_card_payment, credit_card_id').eq('family_id', familyId),
+        categories: supabase.from('categories').select('id, name, type, icon_name').eq('family_id', familyId),
+      };
       
-      const errors = { familyMembersError, membersError, cajasError, transactionsError, budgetsError, scheduledError, categoriesError };
-      const hasError = Object.values(errors).some(e => e !== null);
+      const results = await Promise.all(Object.values(dataSources).map(query => query));
+      const [familyResult, membersResult, transactionsResult, cajasResult, budgetsResult, scheduledExpensesResult, categoriesResult] = results;
 
-      if (hasError) {
-        console.error("Error loading one or more family data sets:", errors);
-        set({ loading: false });
-        return;
-      }
+      if (familyResult.error) throw new Error(`Error fetching family: ${familyResult.error.message}`);
+      // ... check other errors if necessary
 
-      // 3. All data fetched successfully, update the state
+      const formattedMembers = membersResult.data.map(m => ({
+        id: m.user_id,
+        role: m.role,
+        name: m.full_name,
+        avatar: m.avatar_url || `https://i.pravatar.cc/150?u=${m.user_id}`,
+      }));
+
+      const memberMap = new Map(formattedMembers.map(m => [m.id, m]));
+      const transactionsWithDetails = transactionsResult.data.map(t => ({
+        ...t,
+        memberName: memberMap.get(t.member_id)?.name || 'N/A',
+        memberAvatar: memberMap.get(t.member_id)?.avatar,
+      })).sort((a, b) => new Date(b.date) - new Date(a.date));
+
       set({
-        family: userFamily,
-        familyMembers: finalFamilyMembers || [],
-        members: finalMembers || [],
-        transactions: (finalTransactions || []).map(t => ({
-          ...t,
-          memberName: t.members?.name || 'N/A',
-          memberAvatar: t.members?.avatar
-        })),
-        cajas: (finalCajas || []).map(c => ({ ...c, icon: cajaIconMap[c.type] })),
-        budgets: finalBudgets || [],
-        scheduledExpenses: finalScheduled || [],
-        categories: finalCategories || [],
-        loading: false, // Set loading to false here, on success
+        family: familyResult.data,
+        members: formattedMembers,
+        transactions: transactionsWithDetails,
+        cajas: cajasResult.data.map(c => ({...c, icon: cajaIconMap[c.type]})),
+        budgets: budgetsResult.data,
+        scheduledExpenses: scheduledExpensesResult.data,
+        categories: categoriesResult.data,
+        loading: false,
       });
 
     } catch (error) {
-      console.error("Critical error in fetchInitialData:", error);
-      set({ loading: false }); // Stop on unexpected errors
+      console.error("Critical Error during fetchInitialData:", error);
+      const errorMessage = error.message || '';
+      const errorCode = error.code || '';
+      
+      if (errorMessage.includes('oauth_client_id') || errorCode === 'refresh_token_not_found' || errorCode === 'unexpected_failure') {
+        set({ error: 'AUTH_SESSION_ERROR', loading: false });
+        setTimeout(() => supabase.auth.signOut(), 500);
+      } else if (errorMessage.includes('timeout')) {
+        const problemSource = error.details?.match(/'([^']+)'/)?.[1] || 'desconocida';
+        set({ error: 'DATABASE_TIMEOUT_ERROR', errorMessage: `Timeout en la consulta a '${problemSource}'`, loading: false });
+      } else if (errorMessage.includes('recursion') || error.code === '54001' || error.code === '42P17') {
+        const problemSource = error.details?.match(/'([^']+)'/)?.[1] || 'desconocida';
+        set({ error: 'DATABASE_RECURSION_ERROR', errorMessage: `Recursión en la tabla/vista '${problemSource}'`, loading: false });
+      } else if (errorMessage.includes('Failed to fetch')) {
+         set({ error: 'NETWORK_ERROR', loading: false });
+      } else {
+         set({ error: 'GENERIC_ERROR', errorMessage: errorMessage, loading: false });
+      }
     }
+  },
+
+  setupFamilyAndInviteMembers: async (familyName, emails) => {
+    set({ loading: true, error: null, errorMessage: null });
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("Usuario no autenticado.");
+
+        // 1. Create the family
+        const { data: newFamily, error: familyError } = await supabase
+            .from('families')
+            .insert({ name: familyName, owner_id: user.id })
+            .select()
+            .single();
+        if (familyError) throw new Error(`Error creando la familia: ${familyError.message}`);
+
+        // 2. Link the creator to the family
+        const { error: memberError } = await supabase.from('family_members').insert({
+            family_id: newFamily.id,
+            user_id: user.id,
+            role: 'Aportante Principal'
+        });
+        if (memberError) throw new Error(`Error asignando el rol: ${memberError.message}`);
+
+        // 3. Create invitations for other members
+        if (emails.length > 0) {
+            const invitations = emails.map(email => ({
+                family_id: newFamily.id,
+                email: email,
+                role: 'Aportante'
+            }));
+            const { error: inviteError } = await supabase.from('invitations').insert(invitations);
+            if (inviteError) {
+                console.warn("Error creando invitaciones:", inviteError);
+            }
+        }
+        
+        // 4. Success, refetch all data. The app will redirect automatically.
+        await get().fetchInitialData();
+        return { success: true };
+
+    } catch (error) {
+        console.error("Error during family setup:", error);
+        set({ loading: false, error: 'SETUP_ERROR', errorMessage: error.message });
+        return { error };
+    }
+  },
+
+  clearData: () => {
+    set({
+      family: null, members: [], transactions: [], cajas: [],
+      budgets: [], scheduledExpenses: [], categories: [], loading: false, error: null, errorMessage: null
+    });
+  },
+
+  inviteMember: async ({ email, role }) => {
+    const { family } = get();
+    if (!family) {
+      return { error: { message: "No se encontró la familia para asociar la invitación." } };
+    }
+
+    const { data, error } = await supabase.from('invitations').insert([
+        { family_id: family.id, email, role }
+    ]);
+    
+    if (error) {
+      console.error('Error creating invitation:', error);
+    }
+    
+    return { data, error };
   },
 
   addTransactions: async (newTransactions, isTransfer = false, transferId = null) => {
-    const familyId = get().family?.id;
-    if (!familyId) return console.error("No family context");
-
-    const transactionsToAdd = Array.isArray(newTransactions) ? newTransactions : [newTransactions];
-    
-    const supabaseTransactions = transactionsToAdd.map(t => ({
-      date: t.date,
-      description: t.description,
-      member_id: t.memberId || null,
-      caja_id: t.cajaId || null,
-      type: t.type,
-      category: t.category,
-      amount: t.amount,
-      transfer_id: isTransfer ? transferId : null,
-      family_id: familyId,
+    const { family } = get();
+    const transactionsToAdd = newTransactions.map(t => ({
+      ...t,
+      family_id: family.id,
+      transfer_id: isTransfer ? transferId : null
     }));
 
-    const { data, error } = await supabase.from('transactions').insert(supabaseTransactions).select('*, members(name, avatar)');
-
+    const { data, error } = await supabase.from('transactions').insert(transactionsToAdd).select();
     if (error) {
       console.error('Error adding transactions:', error);
-    } else {
-      const newTxsWithDetails = (data || []).map(tx => ({
-          ...tx,
-          memberName: tx.members?.name || 'N/A',
-          memberAvatar: tx.members?.avatar
-      }));
-      set(state => ({
-        transactions: [...newTxsWithDetails, ...state.transactions].sort((a, b) => new Date(b.date) - new Date(a.date))
-      }));
+      return;
     }
+    get().fetchInitialData();
   },
 
   updateTransaction: async (transactionId, updatedData) => {
-    if (updatedData.isTransferEdit) {
-      const { originalTransferId, newTransactions } = updatedData;
-  
-      const { error: deleteError } = await supabase
-        .from('transactions')
-        .delete()
-        .eq('transfer_id', originalTransferId);
-  
-      if (deleteError) {
-        console.error('Error deleting old transfer during update:', deleteError);
-        return;
-      }
-  
-      set(state => ({ transactions: state.transactions.filter(t => t.transfer_id !== originalTransferId) }));
-  
-      await get().addTransactions(newTransactions, true, originalTransferId);
-  
-    } else {
-      const supabaseData = {
-        date: updatedData.date,
-        description: updatedData.description,
-        member_id: updatedData.memberId || null,
-        caja_id: updatedData.cajaId || null,
-        type: updatedData.type,
-        category: updatedData.category,
-        amount: updatedData.amount
-      };
-    
-      const { data, error } = await supabase
-        .from('transactions')
-        .update(supabaseData)
-        .eq('id', transactionId)
-        .select('*, members(name, avatar)');
-    
-      if (error) {
-        console.error('Error updating transaction:', error);
-      } else if (data && data.length > 0) {
-        const updatedTx = data[0];
-        set(state => ({
-          transactions: state.transactions.map(t => 
-            t.id === transactionId 
-            ? { ...updatedTx, memberName: updatedTx.members?.name || 'N/A', memberAvatar: updatedTx.members?.avatar } 
-            : t
-          )
-        }));
-      }
+    const { error } = await supabase.from('transactions').update(updatedData).eq('id', transactionId);
+    if (error) {
+      console.error('Error updating transaction:', error);
+      return;
     }
+    get().fetchInitialData();
   },
 
-  deleteTransaction: async (transaction) => {
-    if (transaction.transfer_id) {
-      const { error } = await supabase.from('transactions').delete().eq('transfer_id', transaction.transfer_id);
-      if (error) console.error('Error deleting transfer:', error);
-      else set(state => ({ transactions: state.transactions.filter(t => t.transfer_id !== transaction.transfer_id) }));
-    } else {
-      const { error } = await supabase.from('transactions').delete().eq('id', transaction.id);
-      if (error) console.error('Error deleting transaction:', error);
-      else set(state => ({ transactions: state.transactions.filter(t => t.id !== transaction.id) }));
+  deleteTransaction: async (transactionToDelete) => {
+    const { error } = await supabase.from('transactions').delete().eq('id', transactionToDelete.id);
+    if (error) {
+      console.error('Error deleting transaction:', error);
+      return;
     }
+    get().fetchInitialData();
   },
-
+  
   addCaja: async (newCajaData) => {
-    const familyId = get().family?.id;
-    if (!familyId) return console.error("No family context");
-
-    const supabaseData = { ...newCajaData, family_id: familyId };
-    Object.keys(supabaseData).forEach(key => {
-      if (supabaseData[key] === undefined || supabaseData[key] === '') delete supabaseData[key];
-    });
-
-    const { data, error } = await supabase.from('cajas').insert([supabaseData]).select();
-    
-    if (error) {
-      console.error('Error adding caja:', error);
-    } else if (data && data.length > 0) {
-      const newCaja = data[0];
-      const newCajaWithIcon = { ...newCaja, icon: cajaIconMap[newCaja.type] };
-      set(state => ({ cajas: [...state.cajas, newCajaWithIcon] }));
-
-      if (newCaja.type === 'Préstamos' || newCaja.type === 'Tarjeta de Crédito') {
-        const isLoan = newCaja.type === 'Préstamos';
-        const newExpenseData = {
-          description: isLoan ? `Cuota de ${newCaja.name}` : `Pago de Tarjeta ${newCaja.name}`,
-          amount: isLoan ? parseFloat(newCaja.monthly_payment) || 0 : 0,
-          category: isLoan ? 'Vivienda' : 'Servicios',
-          day_of_month: isLoan ? parseInt(newCaja.payment_day) || 1 : parseInt(newCaja.payment_due_date) || 1,
-          member_id: newCaja.member_id,
-          caja_id: null,
-          is_automatic: true,
-          is_credit_card_payment: !isLoan,
-          credit_card_id: isLoan ? null : newCaja.id,
-        };
-        await get().addScheduledExpense(newExpenseData);
-      }
-    }
+    const { family } = get();
+    const { error } = await supabase.from('cajas').insert({ ...newCajaData, family_id: family.id });
+    if (error) console.error('Error adding caja:', error);
+    else get().fetchInitialData();
   },
   
-  saveBudget: async (newBudget) => {
-    const familyId = get().family?.id;
-    if (!familyId) return console.error("No family context");
-
-    const budgetToSave = { ...newBudget, family_id: familyId };
-    const { data, error } = await supabase.from('budgets').upsert(budgetToSave, { onConflict: 'family_id,category,month,year' }).select();
-    
-    if (error) {
-      console.error('Error saving budget:', error);
-    } else if (data && data.length > 0) {
-      set(state => {
-        const existingIndex = state.budgets.findIndex(b => b.category === newBudget.category && b.month === newBudget.month && b.year === newBudget.year);
-        if (existingIndex > -1) {
-          const updatedBudgets = [...state.budgets];
-          updatedBudgets[existingIndex] = data[0];
-          return { budgets: updatedBudgets };
-        }
-        return { budgets: [...state.budgets, data[0]] };
-      });
-    }
+  saveBudget: async (budgetData) => {
+    const { family } = get();
+    const payload = { ...budgetData, family_id: family.id };
+    const { error } = await supabase.from('budgets').upsert(payload, { onConflict: 'id' });
+    if (error) console.error('Error saving budget:', error);
+    else get().fetchInitialData();
   },
 
   deleteBudget: async (budgetId) => {
     const { error } = await supabase.from('budgets').delete().eq('id', budgetId);
     if (error) console.error('Error deleting budget:', error);
-    else set(state => ({ budgets: state.budgets.filter(b => b.id !== budgetId) }));
+    else get().fetchInitialData();
   },
-
+  
   addScheduledExpense: async (newExpenseData) => {
-    const familyId = get().family?.id;
-    if (!familyId) return console.error("No family context");
-
-    const supabaseData = { ...newExpenseData, family_id: familyId };
-    const { data, error } = await supabase.from('scheduled_expenses').insert([supabaseData]).select();
+    const { family } = get();
+    const { error } = await supabase.from('scheduled_expenses').insert({ ...newExpenseData, family_id: family.id });
     if (error) console.error('Error adding scheduled expense:', error);
-    else if (data?.[0]) set(state => ({ scheduledExpenses: [...state.scheduledExpenses, data[0]] }));
-  },
-
-  addMember: async (newMemberData) => {
-    const familyId = get().family?.id;
-    if (!familyId) return console.error("No family context");
-
-    const newMember = { ...newMemberData, avatar: faker.image.avatar(), family_id: familyId };
-    const { data, error } = await supabase.from('members').insert([newMember]).select();
-    if (error) {
-      console.error('Error adding member:', error);
-    } else if (data?.[0]) {
-      const newlyAddedMember = data[0];
-      set(state => ({ members: [...state.members, newlyAddedMember] }));
-
-      const newCashBox = { name: `Efectivo ${newlyAddedMember.name.split(' ')[0]}`, type: 'Efectivo', member_id: newlyAddedMember.id, family_id: familyId };
-      const { data: cajaData, error: cajaError } = await supabase.from('cajas').insert([newCashBox]).select();
-      if (cajaError) console.error('Error creating default cash box:', cajaError);
-      else if (cajaData?.[0]) {
-        const newCajaWithIcon = { ...cajaData[0], icon: cajaIconMap[cajaData[0].type] };
-        set(state => ({ cajas: [...state.cajas, newCajaWithIcon] }));
-      }
-    }
-  },
-
-  deleteMember: async (memberId) => {
-    const { error: cajasError } = await supabase.from('cajas').delete().eq('member_id', memberId);
-    if (cajasError) return console.error("Error deleting member's cash boxes:", cajasError);
-
-    const { error: memberError } = await supabase.from('members').delete().eq('id', memberId);
-    if (memberError) return console.error('Error deleting member:', memberError);
-
-    set(state => ({
-      members: state.members.filter(m => m.id !== memberId),
-      cajas: state.cajas.filter(c => c.member_id !== memberId),
-      transactions: state.transactions.map(t => t.member_id === memberId ? { ...t, member_id: null, memberName: 'Eliminado' } : t),
-    }));
+    else get().fetchInitialData();
   },
 
   addCategory: async (categoryData) => {
-    const familyId = get().family?.id;
-    if (!familyId) return console.error("No family context");
-
-    const categoryToSave = { ...categoryData, family_id: familyId };
-    const { data, error } = await supabase.from('categories').insert([categoryToSave]).select();
+    const { family } = get();
+    const { error } = await supabase.from('categories').insert({ ...categoryData, family_id: family.id });
     if (error) console.error('Error adding category:', error);
-    else if (data?.[0]) set(state => ({ categories: [...state.categories, data[0]] }));
+    else get().fetchInitialData();
   },
 
   deleteCategory: async (categoryId) => {
     const { error } = await supabase.from('categories').delete().eq('id', categoryId);
     if (error) console.error('Error deleting category:', error);
-    else set(state => ({ categories: state.categories.filter(c => c.id !== categoryId) }));
+    else get().fetchInitialData();
   },
 
-  updateMemberAvatar: async (memberId, newAvatar) => {
-    const { data, error } = await supabase.from('members').update({ avatar: newAvatar }).eq('id', memberId).select();
-    if (error) console.error('Error updating avatar:', error);
-    else if (data?.[0]) set(state => ({ members: state.members.map(m => m.id === memberId ? data[0] : m) }));
-  },
+  confirmScheduledExpense: async (transactionData, scheduledExpenseId) => {
+    const { family, scheduledExpenses } = get();
+    const expense = scheduledExpenses.find(e => e.id === scheduledExpenseId);
+    if (!expense) return;
 
-  confirmScheduledExpense: async (updatedTransactionData, scheduledExpenseId) => {
-    const newTransaction = { ...updatedTransactionData, type: 'Gasto' };
-    await get().addTransactions([newTransaction]);
+    const periodKey = format(new Date(), 'yyyy-MM');
 
-    const today = new Date();
-    const periodKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-    const scheduledExpense = get().scheduledExpenses.find(e => e.id === scheduledExpenseId);
-    const updatedConfirmedMonths = [...(scheduledExpense.confirmed_months || []), periodKey];
-
-    const { error } = await supabase.from('scheduled_expenses').update({ confirmed_months: updatedConfirmedMonths }).eq('id', scheduledExpenseId);
-    if (error) {
-      console.error('Error updating scheduled expense:', error);
-    } else {
-      set(state => ({
-        scheduledExpenses: state.scheduledExpenses.map(exp => exp.id === scheduledExpenseId ? { ...exp, confirmed_months: updatedConfirmedMonths } : exp)
-      }));
-    }
-  },
-
-  updateFamilyMemberRole: async (memberId, newRole) => {
-    const { data, error } = await supabase.from('family_members').update({ role: newRole }).eq('id', memberId).select().single();
-    if (error) {
-      console.error('Error updating member role:', error);
-      alert(`Error: ${error.message}`);
-    } else if (data) {
-      set(state => ({ familyMembers: state.familyMembers.map(m => m.id === memberId ? { ...m, role: data.role } : m) }));
-    }
-  },
-
-  deleteFamilyMember: async (memberId) => {
-    const family = get().family;
-    const memberToDelete = get().familyMembers.find(m => m.id === memberId);
-    if (!memberToDelete || memberToDelete.user_id === family?.owner_id) {
-      alert("No se puede eliminar al propietario de la familia.");
+    const { error: txError } = await supabase.from('transactions').insert({ ...transactionData, family_id: family.id });
+    if (txError) {
+      console.error('Error confirming expense:', txError);
       return;
     }
 
-    const { error } = await supabase.from('family_members').delete().eq('id', memberId);
-    if (error) {
-      console.error('Error deleting family member:', error);
-      alert(`Error: ${error.message}`);
-    } else {
-      set(state => ({ familyMembers: state.familyMembers.filter(m => m.id !== memberId) }));
-    }
+    const updatedConfirmedMonths = [...(expense.confirmed_months || []), periodKey];
+    const { error: updateError } = await supabase
+      .from('scheduled_expenses')
+      .update({ confirmed_months: updatedConfirmedMonths })
+      .eq('id', scheduledExpenseId);
+
+    if (updateError) console.error('Error updating scheduled expense:', updateError);
+    else get().fetchInitialData();
   },
 }));

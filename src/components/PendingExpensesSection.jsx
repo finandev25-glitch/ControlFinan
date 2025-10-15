@@ -6,25 +6,27 @@ const formatCurrency = (amount) => new Intl.NumberFormat('es-PE', { style: 'curr
 const PendingExpensesSection = ({ pendingExpenses, onReviewExpense, members }) => {
   if (!pendingExpenses || pendingExpenses.length === 0) {
     return (
-      <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-sm text-center h-full flex flex-col justify-center">
-        <Bell className="mx-auto h-10 w-10 text-slate-400" />
-        <h3 className="mt-2 text-md font-medium text-slate-900">Todo en orden</h3>
+      <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-sm text-center h-full flex flex-col justify-center items-center">
+        <div className="p-4 bg-green-100 rounded-full">
+            <CheckCircle className="h-8 w-8 text-green-600" />
+        </div>
+        <h3 className="mt-4 text-md font-semibold text-slate-900">Todo en Orden</h3>
         <p className="mt-1 text-sm text-slate-500">No hay gastos programados por confirmar.</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-sm">
-      <h2 className="text-lg font-semibold text-slate-800 mb-4">Gastos por Confirmar</h2>
-      <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
+    <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-sm h-full flex flex-col">
+      <h2 className="text-lg font-semibold text-slate-800 mb-4">Acciones Rápidas</h2>
+      <div className="space-y-3 flex-grow overflow-y-auto pr-2">
         {pendingExpenses.map(expense => {
           const member = members.find(m => m.id === expense.member_id);
           return (
-            <div key={expense.id} className="bg-slate-50 p-3 rounded-lg flex items-center justify-between gap-3">
+            <div key={expense.id} className="bg-amber-50 border border-amber-200 p-3 rounded-lg flex items-center justify-between gap-3">
               <div>
-                <p className="font-semibold text-slate-800 text-sm">{expense.description}</p>
-                <p className="text-xs text-slate-500">
+                <p className="font-semibold text-amber-900 text-sm">{expense.description}</p>
+                <p className="text-xs text-amber-700">
                   {member ? member.name : 'General'} - {formatCurrency(expense.amount)}
                 </p>
               </div>

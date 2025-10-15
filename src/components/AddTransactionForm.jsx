@@ -6,7 +6,7 @@ import { format } from 'date-fns';
 import { faker } from '@faker-js/faker';
 import SelectCajaModal from './SelectCajaModal';
 
-const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas, incomeCategories, expenseCategories, categoryIconMap, transactionToEdit, transactions }) => {
+const AddTransactionForm = ({ onSave, members, onClose, cajas, incomeCategories, expenseCategories, categoryIconMap, transactionToEdit, transactions }) => {
   const isEditing = !!transactionToEdit;
   const [isCajaModalOpen, setIsCajaModalOpen] = useState(false);
   const [cajaSelectionContext, setCajaSelectionContext] = useState(null); // 'from', 'to', or 'standard'
@@ -82,7 +82,7 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas,
 
   useEffect(() => {
     setFormData(getInitialFormState(transactionToEdit));
-  }, [transactionToEdit, selectedMemberId, members, cajas, transactions]);
+  }, [transactionToEdit, members, cajas, transactions]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -142,8 +142,8 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas,
         const expenseTx = {
             date: transactionDate,
             description: formData.description || `${formData.type === 'Interna' ? 'Retiro a' : 'Transferencia a'} ${toCaja.name}`,
-            memberId: fromMemberId,
-            cajaId: formData.fromCajaId,
+            member_id: fromMemberId,
+            caja_id: formData.fromCajaId,
             type: 'Gasto',
             category: formData.type === 'Interna' ? 'Transferencia Interna' : 'Transferencia',
             amount: amount,
@@ -152,8 +152,8 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas,
         const incomeTx = {
             date: transactionDate,
             description: formData.description || `${formData.type === 'Interna' ? 'Depósito de' : 'Transferencia de'} ${fromCaja.name}`,
-            memberId: toMemberId,
-            cajaId: formData.toCajaId,
+            member_id: toMemberId,
+            caja_id: formData.toCajaId,
             type: 'Ingreso',
             category: formData.type === 'Interna' ? 'Transferencia Interna' : 'Transferencia',
             amount: amount,
@@ -177,8 +177,8 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas,
     const dataToSave = {
         date: transactionDate,
         description: formData.description,
-        memberId: formData.memberId,
-        cajaId: formData.cajaId,
+        member_id: formData.memberId,
+        caja_id: formData.cajaId,
         type: formData.type,
         amount: amount,
         category: formData.category,
@@ -242,7 +242,7 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas,
           )}
 
           <div>
-              <label htmlFor="amount" className="block text-sm font-medium text-slate-700 mb-1">Monto (PEN)</label>
+              <label htmlFor="amount" className="block text-sm font-medium text-slate-700 mb-1">Monto (S/)</label>
               <input 
                   type="number" name="amount" id="amount" value={formData.amount} onChange={handleInputChange} 
                   className="block w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 text-center text-lg" 
@@ -260,7 +260,7 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas,
               />
               <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Caja</label>
-                  <button type="button" onClick={() => handleOpenCajaModal('standard')} className="w-full text-left flex items-center justify-between gap-3 px-3 py-3 text-base border-slate-300 bg-slate-50 rounded-xl shadow-sm">
+                  <button type="button" onClick={() => handleOpenCajaModal('standard')} className="w-full text-left flex items-center justify-between gap-3 px-3 py-3 text-base border border-slate-300 bg-slate-50 rounded-xl shadow-sm">
                       <div className="flex items-center gap-3 truncate">
                           <StandardCajaIcon className="h-5 w-5 text-slate-500 flex-shrink-0" />
                           <span className="truncate">{standardCaja?.name || 'Seleccionar Caja'}</span>
@@ -277,7 +277,7 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas,
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Desde Caja</label>
-                  <button type="button" onClick={() => handleOpenCajaModal('from')} className="w-full text-left flex items-center justify-between gap-3 px-3 py-3 text-base border-slate-300 bg-slate-50 rounded-xl shadow-sm">
+                  <button type="button" onClick={() => handleOpenCajaModal('from')} className="w-full text-left flex items-center justify-between gap-3 px-3 py-3 text-base border border-slate-300 bg-slate-50 rounded-xl shadow-sm">
                       <div className="flex items-center gap-3 truncate">
                           <FromCajaIcon className="h-5 w-5 text-slate-500 flex-shrink-0" />
                           <span className="truncate">{fromCaja?.name || 'Seleccionar Origen'}</span>
@@ -289,7 +289,7 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas,
               </div>
               <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Hacia Caja</label>
-                  <button type="button" onClick={() => handleOpenCajaModal('to')} className="w-full text-left flex items-center justify-between gap-3 px-3 py-3 text-base border-slate-300 bg-slate-50 rounded-xl shadow-sm">
+                  <button type="button" onClick={() => handleOpenCajaModal('to')} className="w-full text-left flex items-center justify-between gap-3 px-3 py-3 text-base border border-slate-300 bg-slate-50 rounded-xl shadow-sm">
                       <div className="flex items-center gap-3 truncate">
                           <ToCajaIcon className="h-5 w-5 text-slate-500 flex-shrink-0" />
                           <span className="truncate">{toCaja?.name || 'Seleccionar Destino'}</span>
@@ -324,8 +324,8 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas,
           </div>
 
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-slate-700 mb-1">Descripción</label>
-            <input type="text" name="description" id="description" value={formData.description} onChange={handleInputChange} className="block w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm" />
+            <label htmlFor="description" className="block text-sm font-medium text-slate-700 mb-1">Descripción (Opcional)</label>
+            <input type="text" name="description" id="description" value={formData.description} onChange={handleInputChange} placeholder="Ej: Compra semanal" className="block w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl shadow-sm placeholder-slate-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm" />
           </div>
 
           <div className="pt-2 flex flex-col items-center gap-3">
@@ -333,15 +333,17 @@ const AddTransactionForm = ({ onSave, members, selectedMemberId, onClose, cajas,
               type="submit"
               className="w-full px-4 py-3 text-base font-semibold text-white bg-primary-600 border border-transparent rounded-full shadow-sm hover:bg-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-500"
             >
-              {isEditing ? 'Actualizar' : 'Agregar'}
+              {isEditing ? 'Actualizar Transacción' : 'Agregar Transacción'}
             </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-sm font-medium text-slate-600 hover:text-primary-600"
-            >
-              Cancelar
-            </button>
+            {isEditing && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="text-sm font-medium text-slate-600 hover:text-primary-600"
+              >
+                Cancelar Edición
+              </button>
+            )}
           </div>
         </form>
       </div>
