@@ -1,8 +1,8 @@
 import React, { useRef, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { PiggyBank, LayoutDashboard, ArrowLeftRight, Wallet, Target, BarChart3, FileText, X, ClipboardCheck, CalendarClock, Settings, LogOut } from 'lucide-react';
+import { PiggyBank, LayoutDashboard, ArrowLeftRight, Wallet, Target, BarChart3, FileText, X, ClipboardCheck, CalendarClock, Settings, LogOut, Users, Home } from 'lucide-react';
 
-const Sidebar = ({ sidebarOpen, setSidebarOpen, onLogout }) => {
+const Sidebar = ({ sidebarOpen, setSidebarOpen, onLogout, family }) => {
   const location = useLocation();
   const { pathname } = location;
   const sidebar = useRef(null);
@@ -27,6 +27,8 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, onLogout }) => {
     { to: "/presupuesto", icon: Target, text: "Presupuesto" },
     { to: "/reportes", icon: BarChart3, text: "Reportes" },
     { to: "/analisis", icon: FileText, text: "Análisis" },
+    { to: "/miembros", icon: Users, text: "Miembros" },
+    { to: "/familia", icon: Home, text: "Familia" },
     { to: "/configuracion", icon: Settings, text: "Configuración" },
   ];
 
@@ -34,9 +36,12 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, onLogout }) => {
     <>
       {/* Sidebar for Desktop */}
       <aside className="hidden lg:flex lg:flex-col w-64 bg-primary-900 text-white p-4">
-        <div className="flex items-center gap-3 mb-8 px-2">
-          <PiggyBank className="h-10 w-10 text-white" />
-          <span className="text-2xl font-bold">MiSaldo</span>
+        <div className="flex flex-col mb-8 px-2">
+           <div className="flex items-center gap-3 mb-2">
+            <PiggyBank className="h-10 w-10 text-white" />
+            <span className="text-2xl font-bold">MiSaldo</span>
+          </div>
+          {family && <p className="text-sm text-primary-300 truncate" title={family.name}>{family.name}</p>}
         </div>
         <nav className="flex-1 space-y-2">
           {navLinks.map(link => (
@@ -74,9 +79,12 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, onLogout }) => {
         >
             <X size={24} />
         </button>
-        <div className="flex items-center gap-3 mb-8 px-2">
-          <PiggyBank className="h-10 w-10 text-white" />
-          <span className="text-2xl font-bold">MiSaldo</span>
+        <div className="flex flex-col mb-8 px-2">
+           <div className="flex items-center gap-3 mb-2">
+            <PiggyBank className="h-10 w-10 text-white" />
+            <span className="text-2xl font-bold">MiSaldo</span>
+          </div>
+          {family && <p className="text-sm text-primary-300 truncate" title={family.name}>{family.name}</p>}
         </div>
         <nav className="flex-1 space-y-2">
           {navLinks.map(link => (

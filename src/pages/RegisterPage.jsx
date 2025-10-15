@@ -1,96 +1,12 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { Mail, Lock, LoaderCircle } from 'lucide-react';
+import { Mail, Lock, LoaderCircle, User } from 'lucide-react';
+import { faker } from '@faker-js/faker';
 
-const seedDatabase = async (userId) => {
-    console.log("New user, seeding database...");
-    const { members: mockMembers, cajas: mockCajas, categories, budgets, scheduledExpenses, transactions: mockTransactions } = await import('../data/seed.js');
-    
-    // 1. Insert Members
-    const membersToInsert = mockMembers.map(({ id, ...rest }) => ({ ...rest, user_id: userId }));
-    const { data: insertedMembers, error: membersError } = await supabase.from('members').insert(membersToInsert).select();
-    if (membersError) throw membersError;
-
-    const memberIdMap = mockMembers.reduce((acc, mockMember, index) => {
-        acc[mockMember.id] = insertedMembers[index].id;
-        return acc;
-    }, {});
-    
-    const aportantePrincipalMockId = mockMembers.find(m => m.role === 'Aportante Principal')?.id || mockMembers[0].id;
-    const aportantePrincipalNewId = memberIdMap[aportantePrincipalMockId];
-
-    // 2. Insert Cajas (with fix for 'Billetera')
-    const cajasToInsert = mockCajas.map(({ id, icon, ...rest }) => {
-        let memberId = rest.member_id ? memberIdMap[rest.member_id] : null;
-        let name = rest.name;
-
-        // If this is the generic 'Efectivo' box, assign it to the main member
-        if (rest.type === 'Efectivo' && !rest.member_id) {
-            memberId = aportantePrincipalNewId;
-            const ownerName = insertedMembers.find(m => m.id === aportantePrincipalNewId)?.name.split(' ')[0] || 'Principal';
-            name = `Efectivo ${ownerName}`;
-        }
-
-        return {
-            ...rest,
-            name: name,
-            member_id: memberId,
-            user_id: userId,
-        };
-    });
-    const { data: insertedCajas, error: cajasError } = await supabase.from('cajas').insert(cajasToInsert).select();
-    if (cajasError) throw cajasError;
-
-    const cajaIdMap = mockCajas.reduce((acc, mockCaja, index) => {
-        acc[mockCaja.id] = insertedCajas[index].id;
-        return acc;
-    }, {});
-
-    // 3. Insert Categories
-    const categoriesToInsert = categories.map(c => ({ ...c, user_id: userId }));
-    const { error: categoriesError } = await supabase.from('categories').insert(categoriesToInsert);
-    if (categoriesError) throw categoriesError;
-
-    // 4. Insert Budgets
-    const currentYear = new Date().getFullYear();
-    const currentMonth = new Date().getMonth();
-    const budgetsToInsert = budgets.map(b => ({
-      ...b,
-      year: currentYear,
-      month: currentMonth,
-      user_id: userId,
-    }));
-    const { error: budgetsError } = await supabase.from('budgets').insert(budgetsToInsert);
-    if (budgetsError) throw budgetsError;
-    
-    // 5. Insert Scheduled Expenses
-    const scheduledToInsert = scheduledExpenses.map(({ id, ...rest }) => ({
-        ...rest,
-        member_id: rest.memberId ? memberIdMap[rest.memberId] : null,
-        caja_id: rest.cajaId ? cajaIdMap[rest.cajaId] : null,
-        user_id: userId,
-    }));
-    const { error: scheduledError } = await supabase.from('scheduled_expenses').insert(scheduledToInsert);
-    if (scheduledError) throw scheduledError;
-
-    // 6. Insert Transactions
-    const transactionsToInsert = mockTransactions.map(({ id, memberName, ...rest }) => ({
-        ...rest,
-        member_id: rest.memberId ? memberIdMap[rest.memberId] : null,
-        caja_id: rest.cajaId ? cajaIdMap[rest.cajaId] : null,
-        user_id: userId,
-    }));
-    const { error: transactionsError } = await supabase.from('transactions').insert(transactionsToInsert);
-    if (transactionsError) throw transactionsError;
-    
-    console.log("Seeding complete for new user.");
-};
-
-
-const RegisterPage = ({ onRegister }) => {
-  const navigate = useNavigate();
+const RegisterPage = () => {
   const [loading, setLoading] = useState(false);
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -102,27 +18,34 @@ const RegisterPage = ({ onRegister }) => {
     setError('');
     setSuccess('');
 
-    const { data, error } = await supabase.auth.signUp({
+    // The new trigger in the database will handle creating the family,
+    // profile, and membership records automatically and reliably.
+    // We just need to sign the user up.
+    const { data, error: authError } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: {
+          full_name: fullName,
+          avatar_url: faker.image.avatar(),
+        }
+      }
     });
 
-    if (error) {
-      setError(error.message);
+    if (authError) {
+      setError(authError.message);
       setLoading(false);
-    } else if (data.user) {
-      try {
-        await seedDatabase(data.user.id);
-        setSuccess('¡Cuenta creada! Serás redirigido...');
-        if (onRegister) {
-          onRegister(data.user.id);
-        }
-        setTimeout(() => navigate('/'), 2000);
-      } catch (seedError) {
-        setError('Error al configurar la cuenta. Por favor, contacta a soporte.');
-        console.error('Seeding error:', seedError);
-        setLoading(false);
-      }
+      return;
+    }
+
+    if (data.user) {
+      // The onAuthStateChange listener in App.jsx will detect the new session
+      // and automatically navigate the user. We just show a success message.
+      setSuccess('¡Cuenta creada con éxito! Serás redirigido en un momento.');
+    } else {
+      // This case might happen if email confirmation is enabled.
+      setSuccess('¡Revisa tu correo para confirmar tu cuenta!');
+      setLoading(false);
     }
   };
 
@@ -133,6 +56,23 @@ const RegisterPage = ({ onRegister }) => {
         <p className="text-slate-500 mt-1">Empieza a organizar tus finanzas hoy.</p>
       </div>
       <form onSubmit={handleRegister} className="space-y-4">
+        <div>
+          <label htmlFor="fullName" className="block text-sm font-medium text-slate-700 mb-1">Nombre Completo</label>
+          <div className="relative">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+              <User className="h-5 w-5 text-slate-400" />
+            </div>
+            <input
+              id="fullName"
+              type="text"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              className="block w-full rounded-xl border-slate-300 bg-slate-50 py-3 pl-10 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+              placeholder="Ej: Juan Pérez"
+              required
+            />
+          </div>
+        </div>
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1">Correo Electrónico</label>
           <div className="relative">

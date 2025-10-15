@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 
-const Layout = ({ children, pendingExpenses, onReviewExpense, members, cajas, onLogout }) => {
+const Layout = ({ children, pendingExpenses, onReviewExpense, members, cajas, onLogout, family }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <div className="flex h-screen bg-gray-50 text-slate-800">
-      <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} onLogout={onLogout} />
+      <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} onLogout={onLogout} family={family} />
       
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header 
